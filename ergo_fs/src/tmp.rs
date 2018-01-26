@@ -176,6 +176,11 @@ impl PathTmp {
             )
         })
     }
+
+    /// Return a reference to a basic `std::path::Path`
+    pub fn as_path(&self) -> &Path {
+        self.as_ref()
+    }
 }
 
 impl fmt::Debug for PathTmp {
