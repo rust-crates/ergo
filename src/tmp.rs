@@ -1,6 +1,7 @@
-// Almost all of this code is copy/pasted from the tempdir crate.
+// Copyright (c) 2018 Garrett Berg, vitiral@gmail.com
 //
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Almost all of the docs in this module are copy/pasted from the tempdir crate.
+// Copyright (c) 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -11,12 +12,11 @@
 // except according to those terms.
 
 use std::env;
-use std::fs;
-use std::io;
+use std::fmt;
 
 use std_prelude::*;
 use tempdir;
-use path_abs::{PathArc, PathAbs, PathDir};
+use path_abs::{PathArc, PathAbs, PathDir, Error, Result};
 
 /// A `PathDir` that is automatically deleted when it goes out of scope.
 ///
@@ -77,18 +77,18 @@ impl PathTmp {
     /// ```
     /// use ergo_fs::{PathFile, PathTmp};
     ///
-    /// let tmp_dir = PathTmp::create("example").unwrap()
+    /// let tmp_dir = PathTmp::create("example").unwrap();
     /// let file = PathFile::create(tmp_dir.join("temporary-note.txt")).unwrap();
     /// let message = "This file existed, but only for a moment.";
     /// file.write_str(message).unwrap();
-    /// assert_eq!(file.read_string(), message);
+    /// assert_eq!(file.read_string().unwrap(), message);
     ///
     /// // Close the tmp_dir manually (would automatically happen when dropped).
     /// // All contents are automatically deleted.
-    /// drop(tmp_dir.close().unwrap();
+    /// tmp_dir.close().unwrap();
     /// assert!(!file.exists());
     /// ```
-    pub fn create(prefix: &str) -> io::Result<PathTmp> {
+    pub fn create(prefix: &str) -> Result<PathTmp> {
         PathTmp::create_in(&env::temp_dir(), prefix)
     }
 
@@ -105,22 +105,23 @@ impl PathTmp {
     /// ```
     /// use ergo_fs::{PathFile, PathTmp};
     ///
-    /// let tmp_dir = PathTmp::create_in(".", "example").unwrap()
+    /// let tmp_dir = PathTmp::create_in(".", "example").unwrap();
     /// let file = PathFile::create(tmp_dir.join("temporary-note.txt")).unwrap();
     /// let message = "This file existed, but only for a moment.";
     /// file.write_str(message).unwrap();
-    /// assert_eq!(file.read_string(), message);
+    /// assert_eq!(file.read_string().unwrap(), message);
     ///
     /// // Close the tmp_dir manually (would automatically happen when dropped).
     /// // All contents are automatically deleted.
-    /// drop(tmp_dir.close().unwrap();
+    /// tmp_dir.close().unwrap();
     /// assert!(!file.exists());
     /// ```
-    pub fn create_in<P: AsRef<Path>>(base: P, prefix: &str) -> io::Result<PathTmp> {
-        let tmp = TempDir::new_in(&base, prefix).map_err(|err| {
-            io::Error::new(
-                err.kind(),
-                format!("{} when creating tmpdir in {}", err, base),
+    pub fn create_in<P: AsRef<Path>>(base: P, prefix: &str) -> Result<PathTmp> {
+        let tmp = tempdir::TempDir::new_in(&base, prefix).map_err(|err| {
+            Error::new(
+                err,
+                "creating tmpdir",
+                PathArc::new(&base),
             )
         })?;
 
@@ -140,8 +141,8 @@ impl PathTmp {
     /// ```
     /// use ergo_fs::PathTmp;
     ///
-    /// let tmp_dir = PathTmp::create_in(".", "persist").unwrap()
-    /// let dir = tmp_dir.persisit();
+    /// let tmp_dir = PathTmp::create_in(".", "persist").unwrap();
+    /// let dir = tmp_dir.persist();
     ///
     /// // The directory is now persisted to disk
     /// assert!(dir.exists());
@@ -149,7 +150,7 @@ impl PathTmp {
     /// // It can still be manually removed though.
     /// dir.remove().unwrap();
     /// ```
-    pub fn persist(mut self) -> PathDir {
+    pub fn persist(self) -> PathDir {
         self.tmp.into_path();
         self.dir
     }
@@ -168,11 +169,13 @@ impl PathTmp {
     /// may be platform specific.
     ///
     /// [`std::io::Error`]: http://doc.rust-lang.org/std/io/struct.Error.html
-    pub fn close(mut self) -> io::Result<()> {
+    pub fn close(self) -> Result<()> {
+        let dir = self.dir;
         self.tmp.close().map_err(|err| {
-            io::Error::new(
-                err.kind(),
-                format!("{} when removing {}", err, self.dir),
+            Error::new(
+                err,
+                "removing",
+                dir.into(),
             )
         })
     }
@@ -196,7 +199,7 @@ impl Hash for PathTmp {
 }
 
 impl AsRef<PathDir> for PathTmp {
-    fn as_ref(&self) -> &PathAbs {
+    fn as_ref(&self) -> &PathDir {
         &self.dir
     }
 }

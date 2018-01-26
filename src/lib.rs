@@ -1,4 +1,13 @@
+/* Copyright (c) 2018 Garrett Berg, vitiral@gmail.com
+ *
+ * Licensed under the Apache License, Version 2.0, <LICENSE-APACHE or
+ * http://apache.org/licenses/LICENSE-2.0> or the MIT license <LICENSE-MIT or
+ * http://opensource.org/licenses/MIT>, at your option. This file may not be
+ * copied, modified, or distributed except according to those terms.
+ */
 //! ergo_fs: types for making working with the filesystem ergonomic, therefore fun.
+//!
+//! ## Purpose
 //!
 //! This crate provides a minimal set of common types and methods for working with the filesystem.
 //! These types aim to provide:
@@ -16,8 +25,25 @@
 //!   of files.
 //! - [`walkdir`](https://github.com/BurntSushi/walkdir): Provides an efficient and cross platform
 //!   implementation of recursive directory traversal.
+//! - [`std_prelude`]: prelude that the rust stdlib should have always had.
 //!
 //! Consider supporting their development individually and starring them on github.
+//!
+//! ## How to Use
+//! ergo_fs is intended to be a "standard library" of filesystem types. Therefore you should
+//! use like so:
+//!
+//! ```
+//! extern crate ergo_fs;
+//! use ergo_fs::*;
+//! # fn try_main() -> ::std::io::Result<()> {
+//! # Ok(()) } fn main() { try_main().unwrap() }
+//! ```
+//!
+//! This will also export the [`std_prelude`] crate into your namespace, giving you automatic
+//! access to the `io::{Read, Write}` traits, `path::{Path, PathBuf}` types and more.
+//!
+//! [`std_prelude`]: http://github.com/vitiral/std_prelude
 //!
 //! # Types
 //! This library provides several kinds of types which improve and expand on `std::fs` and
@@ -70,17 +96,18 @@
 //!
 //! ### Examples
 //! ```rust
+//! # extern crate ergo_fs;
 //! use ergo_fs::{WalkDir, PathType};
 //!
-//! # fn try_main() -> Result<(), ::std::io::Error> {
+//! # fn try_main() -> ::std::io::Result<()> {
+//! // note: this will error
 //! for entry in WalkDir::new("foo").min_depth(1) {
-//!     match PathType::new(entry?)? {
+//!     match PathType::new(entry?.path())? {
 //!         PathType::File(file) => println!("got file {}", file.display()),
 //!         PathType::Dir(dir) => println!("got dir {}", dir.display()),
 //!     }
 //! }
-//! # Ok(())
-//! # }
+//! # Ok(()) } fn main() { try_main().unwrap_err(); }
 //! ```
 //!
 //! ## Tar Files
@@ -98,25 +125,24 @@
 //! > would be interested in using `path_abs` under the hood?
 //!
 //! ```rust
-//! use ergo_fs::{PathTmp, FileWrite};
+//! # extern crate ergo_fs;
+//! use ergo_fs::*;
 //! use ergo_fs::tar::Builder;
 //!
-//! # fn try_main() -> Result<(), ::std::io::Error> {
+//! # fn try_main() -> ::std::io::Result<()> {
 //! // We are going to tar the source code of this library
 //!
 //! let tmp = PathTmp::create("tmp")?;
-//! let mut tarfile = PathFile::create(tmp.join("src.tar"))?;
+//! let mut tarfile = FileWrite::create(tmp.join("src.tar"))?;
 //!
 //! // tar the source directory
-//! let mut tar = Builder::new(tarfile)
+//! let mut tar = Builder::new(tarfile);
 //! tar.append_dir_all("src", ".")?;
 //! tar.finish();
-//! let tarfile = tar.into_inner();
-//! tarfile.flush();
+//! let tarfile = tar.into_inner()?;
 //!
 //! // A tarfile now exists, do whatever you would like with it.
-//! # Ok(())
-//! # }
+//! # Ok(()) } fn main() { try_main().unwrap() }
 //! ```
 
 extern crate std_prelude;
@@ -128,6 +154,7 @@ extern crate path_abs;
 pub extern crate tar;
 pub extern crate walkdir;
 
+pub use std_prelude::*;
 pub use path_abs::{PathAbs, PathArc, PathFile, PathDir, PathType, FileRead, FileWrite, FileEdit};
 pub use walkdir::{WalkDir, Error as WalkError};
 

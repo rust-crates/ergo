@@ -1,11 +1,23 @@
 [package]
+authors = ["Garrett Berg <vitiral@gmail.com>"]
+description = "Types for making working with the filesystem ergonomic, therefore fun."
+documentation = "https://docs.rs/ergo_fs"
+keywords = [
+    "filesystem",
+    "path",
+    "file",
+    "types",
+    "ergonomic",
+]
+license = "MIT OR Apache-2.0"
 name = "ergo_fs"
+readme = "README.md"
+repository = "https://github.com/vitiral/ergo_fs"
 version = "0.1.0"
-authors = ["Garrett Berg <googberg@gmail.com>"]
 
 [dependencies]
+path_abs = "^0.3.0"
+std_prelude = "^0.2.9"
 tar = "^0.4.14"
 tempdir = "^0.3.5"
 walkdir = "^2.0.1"
-path_Abs = "^0.3.0"
-lockfile = "*"
