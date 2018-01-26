@@ -6,11 +6,24 @@ create _multiple targeted conglomeration_ crates, each one with it's own
 documentation and integration tests ensuring that the underlying libraries do
 not break upstream users.
 
-Unlike other conglomeration crates, ergo crates act as a _library_, where all
-of its dependencies use the `>=version` form. This allows users to pin versions
-of specific crates and otherwise stay at the cutting edge.
+## Sub Crates
+This crate is not currently usable.
 
-Some background:
+The following sub crates are targeted towards the following months:
+
+- [ ]: **ergo_base**: "generally needed stuff" -- `lazy_static`, `maplit`, `failure`, `itertools`, `std_prelude`, etc.
+- [ ]: **ergo_sys**: deal with interfacing with the OS. Examples include time
+  (`chrono`), signal handling `ctrlc`, (maybe) system libraries (`libc`), shell
+  variables (`shellexpand`) and randomness (`rand`).
+- [x]: ~~**ergo_fs** for files+directories. Some crates could be `path_abs`,
+  `walkdir`, `tar`~~ [repo](https://github.com/vitiral/ergo_fs)
+- [ ]: **ergo_config** deserialization and config files+env-vars: `toml`, `serde_json`, `serde_yaml`, `configure`, etc
+
+Something that the ecosystem isn't quite ready for but is probably close
+- **ergo_term**: terminal input/output styling: `tabwriter`, `pretty_tables`, `termstyle`, etc
+- **ergo_test**: test framework conglomeration, not particular to any particular application
+
+## Background
 - I blogged more about my intentions [here][blog]
 - [This issue][qui_issue] contains a good deal of the intention as well
 
