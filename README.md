@@ -14,5 +14,6 @@ Some background:
 - I blogged more about my intentions [here][blog]
 - [This issue][qui_issue] contains a good deal of the intention as well
 
+
 [blog]: http://vitiral.github.io/2018/01/17/rust2018-and-the-great-cli-awakening.html
 [qui_issue]: https://github.com/killercup/quicli/issues/19
