@@ -144,9 +144,9 @@
 //! # Ok(()) } fn main() { try_main().unwrap() }
 //! ```
 
-extern crate std_prelude;
-extern crate tempdir;
-extern crate path_abs;
+pub extern crate std_prelude;
+pub extern crate tempdir;
+pub extern crate path_abs;
 
 // -------------------------------
 // External Crate Exports
