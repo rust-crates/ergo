@@ -23,6 +23,12 @@ Something that the ecosystem isn't quite ready for but is probably close
 - **ergo_term**: terminal input/output styling: `tabwriter`, `pretty_tables`, `termstyle`, etc
 - **ergo_test**: test framework conglomeration, not particular to any particular application
 
+Planned integration in some way:
+- [quicli](https://github.com/killercup/quicli): either copy much of its API or
+  integrate it directly.  The goals don't [100%
+  align](https://github.com/killercup/quicli/issues/19) but we would like some
+  kind of interop/sharing.
+
 ## Background
 - I blogged more about my intentions [here][blog]
 - [This issue][qui_issue] contains a good deal of the intention as well
