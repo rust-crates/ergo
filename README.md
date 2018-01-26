@@ -7,6 +7,14 @@ This library aims to make working with the filesystem in rust more ergonomic.
 
 **See the [library docs](https://docs.rs/ergo_fs) for more information**
 
+## Future Items
+
+- [ ]: Clean up TODOs, mostly around error messages in external crates.
+- [ ]: Have an API review done by the rust community.
+- [ ]: Support `ramfs` as `PathRam`, see [this issue][ramfs]
+
+[ramfs]: https://github.com/rust-lang-nursery/tempdir/issues/42
+
 # LICENSE
 The source code in this repository is Licensed under either of
 - Apache License, Version 2.0, ([LICENSE-APACHE](LICENSE-APACHE) or
