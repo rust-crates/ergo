@@ -18,6 +18,7 @@
 //!   time.
 //!
 //! The crates it wraps/rexports are:
+//!
 //! - [`path_abs`](https://github.com/vitiral/path_abs): Ergonomic paths and files in rust.
 //! - [`tar-rs`](https://github.com/alexcrichton/tar-rs): A library for reading and writing TAR
 //!   archives.
@@ -81,8 +82,6 @@
 //! [`PathTmp`](struct.PathTmp.html), which is a `PathDir` that is deleted when it goes out of
 //! scope.  This is a wrapper around the crate `tempdir::TempDir` with methods that mimick the
 //! `Path` types in this crate.
-//!
-//! > note: `PathTmp` is a wraper around `tempdir::TempDir`
 //!
 //! ## Walkdir
 //!
