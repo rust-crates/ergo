@@ -8,5 +8,5 @@ keywords = [
 license = "MIT OR Apache-2.0"
 name = "ergo"
 readme = "README.md"
-repository = "https://github.com/vitiral/ergo"
-version = "0.1.1"
+repository = "https://github.com/rust-crates/ergo"
+version = "0.1.2"
