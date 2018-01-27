@@ -96,17 +96,17 @@
 //! ### Examples
 //! ```rust
 //! # extern crate ergo_fs;
-//! use ergo_fs::{WalkDir, PathType};
+//! use ergo_fs::*;
 //!
 //! # fn try_main() -> ::std::io::Result<()> {
-//! // note: this will error
-//! for entry in WalkDir::new("foo").min_depth(1) {
-//!     match PathType::new(entry?.path())? {
+//! let dir = PathDir::new("src")?;
+//! for entry in dir.walk().max_depth(1) {
+//!     match PathType::from_entry(entry?)? {
 //!         PathType::File(file) => println!("got file {}", file.display()),
 //!         PathType::Dir(dir) => println!("got dir {}", dir.display()),
 //!     }
 //! }
-//! # Ok(()) } fn main() { try_main().unwrap_err(); }
+//! # Ok(()) } fn main() { try_main().unwrap() }
 //! ```
 //!
 //! ## Tar Files
@@ -159,5 +159,56 @@ pub use walkdir::{WalkDir, Error as WalkError};
 
 // -------------------------------
 // Local Modules and Exports
+
 mod tmp;
 pub use tmp::PathTmp;
+
+/// Extension method on the `Path` type.
+pub trait PathDirExt
+    where Self: AsRef<Path>
+{
+    /// Walk the `PathDir`, returning the `WalkDir` builder.
+    ///
+    /// # Examples
+    /// ```rust
+    /// # extern crate ergo_fs;
+    /// use ergo_fs::*;
+    ///
+    /// # fn try_main() -> ::std::io::Result<()> {
+    /// let dir = PathDir::new("src")?;
+    /// for entry in dir.walk().max_depth(1) {
+    ///     match PathType::from_entry(entry?)? {
+    ///         PathType::File(file) => println!("got file {}", file.display()),
+    ///         PathType::Dir(dir) => println!("got dir {}", dir.display()),
+    ///     }
+    /// }
+    /// # Ok(()) } fn main() { try_main().unwrap() }
+    /// ```
+    fn walk(&self) -> walkdir::WalkDir {
+        walkdir::WalkDir::new(&self)
+    }
+}
+
+/// Extended methods for `PathType`
+pub trait PathTypeExt {
+    /// Create a `PathType` from a `walkdir::DirEntry` using fewer syscalls.
+    ///
+    /// See [`PathDir::walk`]
+    ///
+    /// [`PathDir::walk`]: trait.PathDirExt.html#method.walk
+    fn from_entry(entry: walkdir::DirEntry) -> path_abs::Result<PathType> {
+        let abs = PathAbs::new(entry.path())?;
+        let ty = entry.file_type();
+        if ty.is_file() {
+            Ok(PathType::File(PathFile::from_abs_unchecked(abs)))
+        } else if ty.is_dir() {
+            Ok(PathType::Dir(PathDir::from_abs_unchecked(abs)))
+        } else {
+            // it is a symlink and we _must_ use a syscall to resolve the type.
+            PathType::from_abs(abs)
+        }
+    }
+}
+
+impl PathDirExt for PathDir {}
+impl PathTypeExt for PathType {}
