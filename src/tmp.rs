@@ -16,7 +16,7 @@ use std::fmt;
 
 use std_prelude::*;
 use tempdir;
-use path_abs::{PathArc, PathAbs, PathDir, Error, Result};
+use path_abs::{Error, PathAbs, PathArc, PathDir, Result};
 
 /// A `PathDir` that is automatically deleted when it goes out of scope.
 ///
@@ -117,13 +117,8 @@ impl PathTmp {
     /// assert!(!file.exists());
     /// ```
     pub fn create_in<P: AsRef<Path>>(base: P, prefix: &str) -> Result<PathTmp> {
-        let tmp = tempdir::TempDir::new_in(&base, prefix).map_err(|err| {
-            Error::new(
-                err,
-                "creating tmpdir",
-                PathArc::new(&base),
-            )
-        })?;
+        let tmp = tempdir::TempDir::new_in(&base, prefix)
+            .map_err(|err| Error::new(err, "creating tmpdir", PathArc::new(&base)))?;
 
         Ok(PathTmp {
             dir: PathDir::new(tmp.path())?,
@@ -171,13 +166,9 @@ impl PathTmp {
     /// [`std::io::Error`]: http://doc.rust-lang.org/std/io/struct.Error.html
     pub fn close(self) -> Result<()> {
         let dir = self.dir;
-        self.tmp.close().map_err(|err| {
-            Error::new(
-                err,
-                "removing",
-                dir.into(),
-            )
-        })
+        self.tmp
+            .close()
+            .map_err(|err| Error::new(err, "removing", dir.into()))
     }
 
     /// Return a reference to a basic `std::path::Path`
