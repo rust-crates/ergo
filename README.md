@@ -3,8 +3,6 @@
 [![Build status](https://ci.appveyor.com/api/projects/status/vgis54solhygre0n?svg=true)](https://ci.appveyor.com/project/vitiral/path-abs)
 [![Docs](https://docs.rs/ergo_fs/badge.svg)](https://docs.rs/ergo_fs)
 
-This library aims to make working with the filesystem in rust more ergonomic.
-
 **See the [library docs](https://docs.rs/ergo_fs) for more information**
 
 ## Future Items
