@@ -1,0 +1,19 @@
+language: rust
+
+rust:
+  - stable
+  - beta
+  - nightly
+
+matrix:
+  allow_failures:
+    - rust: nightly
+
+cache: cargo
+
+notifications:
+  email:
+    on_success: never
+
+script:
+  - RUST_BACKTRACE=1 cargo test --verbose --all -- --nocapture
