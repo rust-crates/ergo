@@ -11,13 +11,13 @@ This crate is not currently usable.
 
 The following sub crates are targeted towards the following months:
 
-- [ ]: **ergo_base**: "generally needed stuff" -- `lazy_static`, `maplit`, `failure`, `itertools`, `std_prelude`, etc.
-- [ ]: **ergo_sys**: deal with interfacing with the OS. Examples include time
+- [ ] **ergo_base**: "generally needed stuff" -- `lazy_static`, `maplit`, `failure`, `itertools`, `std_prelude`, etc.
+- [ ] **ergo_sys**: deal with interfacing with the OS. Examples include time
   (`chrono`), signal handling `ctrlc`, (maybe) system libraries (`libc`), shell
   variables (`shellexpand`) and randomness (`rand`).
-- [x]: ~~**ergo_fs** for files+directories. Some crates could be `path_abs`,
+- [x] ~~**ergo_fs** for files+directories. Some crates could be `path_abs`,
   `walkdir`, `tar`~~ [repo](https://github.com/vitiral/ergo_fs)
-- [ ]: **ergo_config** deserialization and config files+env-vars: `toml`, `serde_json`, `serde_yaml`, `configure`, etc
+- [ ] **ergo_config** deserialization and config files+env-vars: `toml`, `serde_json`, `serde_yaml`, `configure`, etc
 
 Something that the ecosystem isn't quite ready for but is probably close
 - **ergo_term**: terminal input/output styling: `tabwriter`, `pretty_tables`, `termstyle`, etc
