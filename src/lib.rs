@@ -5,7 +5,7 @@
  * http://opensource.org/licenses/MIT>, at your option. This file may not be
  * copied, modified, or distributed except according to those terms.
  */
-//! ergo_fs: types for making working with the filesystem ergonomic, therefore fun.
+//! types for making working with the filesystem ergonomic, therefore fun.
 //!
 //! ## Purpose
 //!
@@ -14,8 +14,7 @@
 //!
 //! - Descriptive error messages
 //! - Good performance, but not necessarily at _all_ costs.
-//! - As much type safety as is possible when dealing with the filesystem, which can change at any
-//!   time.
+//! - As much type safety as is possible when dealing with the filesystem
 //!
 //! The crates it wraps/rexports are:
 //!
@@ -44,12 +43,6 @@
 //! # fn try_main() -> ::std::io::Result<()> {
 //! # Ok(()) } fn main() { try_main().unwrap() }
 //! ```
-//!
-//! This will also export the [`std_prelude`] crate into your namespace, giving you automatic
-//! access to the `io::{Read, Write}` traits, `path::{Path, PathBuf}` types and more.
-//!
-//! [`std_prelude`]: http://github.com/vitiral/std_prelude
-//!
 //!
 //! # Types
 //! This library provides several kinds of types which improve and expand on `std::fs` and
@@ -85,6 +78,11 @@
 //!   writeable files.
 //! - [`WalkDir`](struct.WalkDir.html): used for recursively walking directories _quickly_.
 //!   See the **Walkdir** section below.
+//!
+//! In addition, it exports the following from `std_prelude`:
+//! - traits: `Read, IoWrite`
+//! - types: `Path, PathBuf`
+//!
 //!
 //! # Methods
 //! The following methods are exported.
@@ -169,9 +167,10 @@ pub extern crate walkdir;
 // External Crate Exports
 
 use std::borrow::Cow; // FIXME: remove this
-pub use std_prelude::*;
+use std_prelude::*;
 pub use path_abs::{FileEdit, FileRead, FileWrite, PathAbs, PathArc, PathDir, PathFile, PathType};
 pub use walkdir::{Error as WalkError, WalkDir};
+pub use std_prelude::{Read, IoWrite, Path, PathBuf};
 
 // -------------------------------
 // Local Modules and Exports
