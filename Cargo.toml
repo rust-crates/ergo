@@ -1,0 +1,8 @@
+[package]
+authors = ["Garrett Berg <googberg@gmail.com>"]
+name = "ergo_sys"
+version = "0.1.0"
+
+[dependencies]
+chan-signal = "0.3.1"
+rand = "0.4.2"
