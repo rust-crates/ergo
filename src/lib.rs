@@ -19,7 +19,11 @@
 //!
 //! The crates it wraps/rexports are:
 //!
+//! - [`glob`](https://github.com/rust-lang-nursery/glob): Support for matching file paths against
+//!   Unix shell style patterns.
 //! - [`path_abs`](https://github.com/vitiral/path_abs): Ergonomic paths and files in rust.
+//! - [`shellexpand`](https://github.com/netvl/shellexpand): A library for shell-like expansions of
+//!   variables in strings.
 //! - [`tar-rs`](https://github.com/alexcrichton/tar-rs): A library for reading and writing TAR
 //!   archives.
 //! - [`tempdir`](https://github.com/rust-lang-nursery/tempdir): Temporary directories
@@ -131,9 +135,6 @@
 //! Similarly to walkdir, this is a direct export of the `tar` crate. It is recommended that you
 //! use the types like `PathDir` and `FileWrite` when interacting with this crate.
 //!
-//! > TODO: improve tar error messages. See
-//! > [this issue](https://github.com/alexcrichton/tar-rs/issues/128)
-//!
 //! ```rust
 //! # extern crate ergo_fs;
 //! use ergo_fs::*;
@@ -155,8 +156,8 @@
 //! # Ok(()) } fn main() { try_main().unwrap() }
 //! ```
 
-pub extern crate path_abs;
 pub extern crate glob as glob_crate;
+pub extern crate path_abs;
 pub extern crate shellexpand;
 pub extern crate std_prelude;
 pub extern crate tar;
