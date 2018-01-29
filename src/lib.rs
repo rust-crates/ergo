@@ -46,6 +46,7 @@
 //!
 //! [`std_prelude`]: http://github.com/vitiral/std_prelude
 //!
+//!
 //! # Types
 //! This library provides several kinds of types which improve and expand on `std::fs` and
 //! `std::path`, as well as provide new functionality like temporary files and tar archives.
@@ -66,6 +67,9 @@
 //!   associated methods.
 //! - [`PathType`](struct.PathType.html): an enum containing either a PathFile or a PathDir.
 //!   Returned by [`PathDir::list`][dir_list]
+//! - [`PathTmp`](struct.PathTmp.html): a `PathDir` that is deleted when it goes out of scope.
+//!   This is a wrapper around the crate `tempdir::TempDir` with methods that mimick the `Path`
+//!   types in this crate.
 //! - [`FileRead`](struct.FileRead.html): a read-only file handle with `path()` attached and
 //!   improved error messages. Contains only the methods and trait implementations which are
 //!   allowed by a read-only file.
@@ -75,13 +79,27 @@
 //! - [`FileEdit`](struct.FileEdit.html): a read/write file handle with `path()` attached and
 //!   improved error messages. Contains methods and trait implements for both readable _and_
 //!   writeable files.
+//! - [`WalkDir`](struct.WalkDir.html): used for recursively walking directories _quickly_.
+//!   See the **Walkdir** section below.
+//!
+//! # Methods
+//! The following methods are exported.
+//!
+//! - [`expand`](fn.expand.html): does shell expansion on both tilde (`~` = home dir) and
+//!   environment variables with the user's home directory + env variables. Also see the
+//!   exported [`shellexpand`](shellexpand/index.html) crate itself. Consider using with
+//!   `glob` (see below).
+//! - [`glob`](fn.glob.html): a lightweight wrapper around [`glob::glob`](glob/fn.glob.html) that
+//!   returns `PathType` objects.
+//! - [`glob_with`](fn.glob_with.html): a lightweight wrapper around
+//!   [`glob::glob_with`](glob/fn.glob_with.html) that returns `PathType` objects.
+//!
+//! # Details
+//! Bellow are some additional details about imported types.
 //!
 //! ## Temporary Directories
 //!
 //! There is one type exported which mimicks the above `Path*` objects.
-//! [`PathTmp`](struct.PathTmp.html), which is a `PathDir` that is deleted when it goes out of
-//! scope.  This is a wrapper around the crate `tempdir::TempDir` with methods that mimick the
-//! `Path` types in this crate.
 //!
 //! ## Walkdir
 //!
@@ -138,14 +156,17 @@
 //! ```
 
 pub extern crate path_abs;
+pub extern crate glob as glob_crate;
+pub extern crate shellexpand;
 pub extern crate std_prelude;
+pub extern crate tar;
 pub extern crate tempdir;
+pub extern crate walkdir;
 
 // -------------------------------
 // External Crate Exports
-pub extern crate tar;
-pub extern crate walkdir;
 
+use std::borrow::Cow; // FIXME: remove this
 pub use std_prelude::*;
 pub use path_abs::{FileEdit, FileRead, FileWrite, PathAbs, PathArc, PathDir, PathFile, PathType};
 pub use walkdir::{Error as WalkError, WalkDir};
@@ -154,6 +175,16 @@ pub use walkdir::{Error as WalkError, WalkDir};
 // Local Modules and Exports
 
 mod tmp;
+mod glob_wrapper;
+
+pub use glob_wrapper::{
+    // functions
+    glob, glob_with,
+    // renamed types
+    GlobOptions, GlobPatternError,
+    // new iterators
+    GlobPathDirs, GlobPathFiles, GlobPathTypes,
+};
 pub use tmp::PathTmp;
 
 /// Extension method on the `Path` type.
@@ -206,3 +237,57 @@ pub trait PathTypeExt {
 
 impl PathDirExt for PathDir {}
 impl PathTypeExt for PathType {}
+
+// ---------------------------------------
+// ----------- SHELL EXPANSION -----------
+
+/// Renamed [`shellexpand::LookupError`](../shellexpand/struct.LookupError.html) for better
+/// ergonomics.
+pub type ExpandError = shellexpand::LookupError<::std::env::VarError>;
+
+/// Performs both tilde and environment shell expansions in the default system context. This is
+/// the same as [`shellexpand::full`](../shellexpand/fn.full.html) and is the "typical use case"
+/// for expanding strings.
+///
+/// Note that non-existant variables will result in an `Err` (in `sh` they are silently replaced
+/// with an empty string). Also, environment lookup is only done _as needed_ so this function is
+/// performant on strings that do not expand.
+///
+/// For more options and information, see the exported [`shellexpand`](../shellexpand/index.html).
+///
+/// # Examples
+/// ```
+/// # extern crate ergo_fs;
+/// use std::env;
+/// use ergo_fs::*;
+///
+/// # fn try_main() -> Result<(), ExpandError> {
+/// env::set_var("A", "a value");
+/// env::set_var("B", "b value");
+///
+/// let home_dir = env::home_dir()
+///     .map(|p| p.display().to_string())
+///     .unwrap_or_else(|| "~".to_owned());
+///
+/// // Performs both tilde and environment expansions using the system contexts
+/// assert_eq!(
+///     expand("~/$A/${B}s")?,
+///     format!("{}/a value/b values", home_dir)
+/// );
+///
+/// // Unknown variables cause expansion errors
+/// assert_eq!(
+///     expand("~/$UNKNOWN/$B"),
+///     Err(ExpandError {
+///         var_name: "UNKNOWN".into(),
+///         cause: env::VarError::NotPresent
+///     })
+/// );
+/// # Ok(()) } fn main() { try_main().unwrap() }
+/// ```
+pub fn expand<SI: ?Sized>(input: &SI) -> Result<Cow<str>, ExpandError>
+where
+    SI: AsRef<str>,
+{
+    shellexpand::full(input)
+}
