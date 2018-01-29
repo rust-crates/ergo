@@ -133,7 +133,8 @@
 //!
 //! ## Tar Files
 //! Similarly to walkdir, this is a direct export of the `tar` crate. It is recommended that you
-//! use the types like `PathDir` and `FileWrite` when interacting with this crate.
+//! use the `FileWrite` and `FileRead` types when interacting with this crate so that
+//! reading/writing have context. This library already has pretty errors for every other operation.
 //!
 //! ```rust
 //! # extern crate ergo_fs;
