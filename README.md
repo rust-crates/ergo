@@ -61,8 +61,8 @@ The following sub crates are targeted towards the following months:
 - [ ] **ergo_config** deserialization and config files and ENV variables:
   `toml`, `serde_json`, `serde_yaml`, `configure`
 - [ ] **ergo_sys**: deal with interfacing with the OS. Examples currently only
-  include signal handling (`chan-signal`) but we are looking for other important
-  crates.
+  include signal handling (`chan-signal`) and randomness (`rand`) but we are
+  looking for other important crates.
 - [ ] **ergo_sync**: provides an ultra-simple API for using `Sync` types, i.e.
   running threads. Includes `rayon`, `chan`, etc.
 
@@ -77,3 +77,17 @@ The following sub crates are targeted towards the following months:
   integrate it directly. The goals don't
   [100% align](https://github.com/killercup/quicli/issues/19) but we would
   like some kind of interop/sharing.
+
+
+# LICENSE
+The source code in this repository is Licensed under either of
+- Apache License, Version 2.0, ([LICENSE-APACHE](LICENSE-APACHE) or
+  http://www.apache.org/licenses/LICENSE-2.0)
+- MIT license ([LICENSE-MIT](LICENSE-MIT) or
+  http://opensource.org/licenses/MIT)
+
+at your option.
+
+Unless you explicitly state otherwise, any contribution intentionally submitted
+for inclusion in the work by you, as defined in the Apache-2.0 license, shall
+be dual licensed as above, without any additional terms or conditions.
