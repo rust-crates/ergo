@@ -6,33 +6,70 @@ create _multiple targeted conglomeration_ crates, each one with it's own
 documentation and integration tests ensuring that the underlying libraries do
 not break upstream users.
 
-## Sub Crates
-This crate is not currently usable.
+@autron said it best in the
+[rust 2018 roadmap](https://github.com/aturon/rfcs/blob/roadmap-2018/text/0000-roadmap-2018.md#cli-apps)
 
+> # CLI apps
+> > Rust is a fantastic language for writing a Command Line Application (CLI).
+> > For the ergonomics of hacking, it has one of the best argument parsers
+> > ever, has seriously the best serialization library ever and it compiles to
+> > almost any target and goes fast when it runs. (@vitiral)
+
+> Rust has also seem some production update in the CLI space, for which it is
+> very well-suited. This is a space where Rust’s portability, reliability, and
+> ability to produce static binaries make it extremely attractive. We also have a
+> number of excellent libraries already. This year, we will improve this
+> ecosystem and pull it together into a polished, coherent package for people
+> checking out Rust. Read @vitiral’s post and @killercup’s crate for some
+> inspiration!
+
+
+# Vision
+Ergo's current goal is to be a full featuerd CLI SDK, built from composable
+and distinct sub components. You should be able to depend on the `ergo` library
+itself or each of its sub components individally.
+
+Ergo aims to provide the following benefits:
+- A standardized API for disparate types/approaches, allowing library authors
+  to develop simple libraries of high quality, which can then be
+  combined into an ecosystem with a unified API and excellent ergonomics.
+- A starting point for CLI and application developers for documentation and
+  How To. We hope to release an **Ergo Cookbook** once the libraries are more
+  stable.
+- Encourage interopability, quality, and ergonomic error messages among the
+  major CLI crates in the rust ecosystem.
+
+
+# Sub Crates
+The ergo ecosystem is split into multiple crates, each with the prefix `ergo_`
+
+The `ergo` crate itself is not currently usable.
+
+### Implemented Sub Crates
+- [x] [**ergo_fs**](https://github.com/vitiral/ergo_fs): ergonomic filesystem
+  operations. *ALPHA STATUS*
+
+### Near Term Sub Crates
 The following sub crates are targeted towards the following months:
 
-- [ ] **ergo_base**: "generally needed stuff" -- `lazy_static`, `maplit`, `failure`, `itertools`, `std_prelude`, etc.
-- [ ] **ergo_sys**: deal with interfacing with the OS. Examples include time
-  (`chrono`), signal handling `ctrlc`, (maybe) system libraries (`libc`), shell
-  variables (`shellexpand`) and randomness (`rand`).
-- [x] ~~**ergo_fs** for files+directories. Some crates could be `path_abs`,
-  `walkdir`, `tar`~~ [repo](https://github.com/vitiral/ergo_fs)
-- [ ] **ergo_config** deserialization and config files+env-vars: `toml`, `serde_json`, `serde_yaml`, `configure`, etc
+- [ ] **ergo_prelude**: "generally needed stuff" -- `lazy_static`, `maplit`,
+  `failure`, `itertools`, `serde`, etc.
+- [ ] **ergo_config** deserialization and config files+env-vars: `toml`,
+  `serde_json`, `serde_yaml`, `configure`
+- [ ] **ergo_sys**: deal with interfacing with the OS. Examples currently only
+  include signal handling (`chan-signal`) but we are looking for other important
+  crates.
+- [ ] **ergo_sync**: provides an ultra-simple API for using `Sync` types, i.e.
+  running threads. Includes `rayon`, `chan`, etc.
 
-Something that the ecosystem isn't quite ready for but is probably close
-- **ergo_term**: terminal input/output styling: `tabwriter`, `pretty_tables`, `termstyle`, etc
-- **ergo_test**: test framework conglomeration, not particular to any particular application
-
-Planned integration in some way:
-- [quicli](https://github.com/killercup/quicli): either copy much of its API or
-  integrate it directly.  The goals don't [100%
-  align](https://github.com/killercup/quicli/issues/19) but we would like some
-  kind of interop/sharing.
-
-## Background
-- I blogged more about my intentions [here][blog]
-- [This issue][qui_issue] contains a good deal of the intention as well
-
-
-[blog]: http://vitiral.github.io/2018/01/17/rust2018-and-the-great-cli-awakening.html
-[qui_issue]: https://github.com/killercup/quicli/issues/19
+### Future Sub Crates
+- [ ] **ergo_client**: methods/types to be an HTTP client. Sub crates probably
+  include `reqwest`, `h2` and some kinds of json-rpc+soap protocol helpers.
+- [ ] **ergo_term**: simple and ergonomic terminal rendering.
+- [ ] **ergo_test**: one-stop-shop for core testing functionality, mocking,
+  etc.
+- [ ] **ergo_cli**: we want to use
+  [quicli](https://github.com/killercup/quicli), either copy much of its API or
+  integrate it directly. The goals don
+  't [100% align](https://github.com/killercup/quicli/issues/19) but we would
+  like some kind of interop/sharing.
