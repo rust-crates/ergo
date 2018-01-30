@@ -11,7 +11,7 @@ pub use std_prelude::{
     AtomicBool,
     AtomicIsize,
     AtomicUsize,
-    Ordering as AtomicOrdering,
+    AtomicOrdering,
     ATOMIC_USIZE_INIT,
 
     // Used with sleep
