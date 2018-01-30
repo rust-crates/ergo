@@ -58,13 +58,14 @@ The following sub crates are targeted towards the following months:
   `maplit`, `failure`, `itertools`, `serde`, `ordermap`. This will be _very few
   crates_. It is mostly composed of things which could practically be in the
   std library.
+- [ ] **ergo_sync**: provides an ultra-simple API for using `Sync` types, i.e.
+  running threads. Includes `rayon`, `chan`, etc.
+  ([pre alpha repo](https://github.com/rust-crates/ergo_sync))
 - [ ] **ergo_config** deserialization and config files and ENV variables:
   `toml`, `serde_json`, `serde_yaml`, `configure`
 - [ ] **ergo_sys**: deal with interfacing with the OS. Examples currently only
   include signal handling (`chan-signal`) and randomness (`rand`) but we are
   looking for other important crates.
-- [ ] **ergo_sync**: provides an ultra-simple API for using `Sync` types, i.e.
-  running threads. Includes `rayon`, `chan`, etc.
 
 ### Future Sub Crates
 - [ ] **ergo_client**: methods/types to be an HTTP client. Sub crates probably
