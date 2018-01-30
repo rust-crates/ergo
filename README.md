@@ -1,10 +1,10 @@
 # Ergo: making rust's ecosystem more ergonomic, therefore more fun.
 
 Ergo is an effort to unify the rust ecosystem at critical sections. It is
-currently focused on improving the cli ergonomics. To accomplish this it will
-create _multiple targeted conglomeration_ crates, each one with it's own
-documentation and integration tests ensuring that the underlying libraries do
-not break upstream users.
+currently focused on improving the Command Line Interface (CLI) ergonomics. To
+accomplish this it will create _multiple targeted conglomeration_ crates, each
+one with it's own documentation and integration tests ensuring that the
+underlying libraries do not break upstream users.
 
 @autron said it best in the
 [rust 2018 roadmap](https://github.com/aturon/rfcs/blob/roadmap-2018/text/0000-roadmap-2018.md#cli-apps)
@@ -47,15 +47,17 @@ The `ergo` crate itself is not currently usable.
 
 ### Implemented Sub Crates
 - [x] [**ergo_fs**](https://github.com/vitiral/ergo_fs): ergonomic filesystem
-  operations. *ALPHA STATUS*
+  operations. (*usable but alpha status*)
 
 ### Near Term Sub Crates
 The following sub crates are targeted towards the following months:
 
-- [ ] **ergo_prelude**: "generally needed stuff" -- `lazy_static`, `maplit`,
-  `failure`, `itertools`, `serde`, etc.
-- [ ] **ergo_config** deserialization and config files+env-vars: `toml`,
-  `serde_json`, `serde_yaml`, `configure`
+- [ ] **ergo_std**: "generally needed stuff" -- `regex`, `lazy_static`,
+  `maplit`, `failure`, `itertools`, `serde`, `ordermap`. This will be _very few
+  crates_. It is mostly composed of things which could practically be in the
+  std library.
+- [ ] **ergo_config** deserialization and config files and ENV variables:
+  `toml`, `serde_json`, `serde_yaml`, `configure`
 - [ ] **ergo_sys**: deal with interfacing with the OS. Examples currently only
   include signal handling (`chan-signal`) but we are looking for other important
   crates.
@@ -70,6 +72,6 @@ The following sub crates are targeted towards the following months:
   etc.
 - [ ] **ergo_cli**: we want to use
   [quicli](https://github.com/killercup/quicli), either copy much of its API or
-  integrate it directly. The goals don
-  't [100% align](https://github.com/killercup/quicli/issues/19) but we would
+  integrate it directly. The goals don't
+  [100% align](https://github.com/killercup/quicli/issues/19) but we would
   like some kind of interop/sharing.
