@@ -5,7 +5,7 @@
  * http://opensource.org/licenses/MIT>, at your option. This file may not be
  * copied, modified, or distributed except according to those terms.
  */
-//! types for making working with the filesystem ergonomic, therefore fun.
+//! Methods and types for making working with the filesystem ergonomic, therefore fun.
 //!
 //! ## Purpose
 //!
@@ -29,7 +29,6 @@
 //!   of files.
 //! - [`walkdir`](https://github.com/BurntSushi/walkdir): Provides an efficient and cross platform
 //!   implementation of recursive directory traversal.
-//! - [`std_prelude`]: prelude that the rust stdlib should have always had.
 //!
 //! Consider supporting their development individually and starring them on github.
 //!
@@ -49,9 +48,7 @@
 //! `std::path`, as well as provide new functionality like temporary files and tar archives.
 //!
 //! ## Path, Dir and File Types
-//! The following types are exported from [`path_abs`][`path_abs`]. These types provide improved
-//! error messages and type safety when working with paths and files. See the [crate documentation]
-//! [`path_abs`] for more details.
+//! These types provide improved error messages and type safety when working with paths and files.
 //!
 //! - [`PathArc`](struct.PathArc.html): a reference counted `PathBuf` with methods reimplemented
 //!   with better error messages. Use this for a generic serializable path that may or may
@@ -79,7 +76,8 @@
 //! - [`WalkDir`](struct.WalkDir.html): used for recursively walking directories _quickly_.
 //!   See the **Walkdir** section below.
 //!
-//! In addition, it exports the following from `std_prelude`:
+//! In addition, it exports the following from [`std_prelude`](../std_prelude/index.html)
+//!
 //! - traits: `Read, IoWrite`
 //! - types: `Path, PathBuf`
 //!
@@ -91,23 +89,20 @@
 //!   environment variables with the user's home directory + env variables. Also see the
 //!   exported [`shellexpand`](shellexpand/index.html) crate itself. Consider using with
 //!   `glob` (see below).
-//! - [`glob`](fn.glob.html): a lightweight wrapper around [`glob::glob`](glob/fn.glob.html) that
+//! - [`glob`](fn.glob.html): a lightweight wrapper around [`glob::glob`](../glob/fn.glob.html) that
 //!   returns `PathType` objects.
 //! - [`glob_with`](fn.glob_with.html): a lightweight wrapper around
-//!   [`glob::glob_with`](glob/fn.glob_with.html) that returns `PathType` objects.
+//!   [`glob::glob_with`](../glob/fn.glob_with.html) that returns `PathType` objects.
 //!
 //! # Details
 //! Bellow are some additional details about imported types.
 //!
-//! ## Temporary Directories
-//!
-//! There is one type exported which mimicks the above `Path*` objects.
-//!
 //! ## Walkdir
 //!
-//! The [`Walkdir`](struct.WalkDir.html) type is a direct export from the `walkdir` crate.
-//! The crate already has excellent error messages, and although it returns the regular
-//! `std::path::PathBuf` type, it is easy to convert to a file if you would like to.
+//! Use `PathDir::walk` to walk a directory. This returns the [`Walkdir`](struct.WalkDir.html)
+//! iterator, which is a direct export from the [`walkdir`](../walkdir/index.html) crate.  The
+//! crate already has excellent error messages, and although it returns the regular
+//! `std::path::PathBuf` type, you can convert to a `PathType` using `PathType::from_entry`.
 //!
 //! > TODO: although the WalkDir error can be auto-converted to std::io::Error, it
 //! > does not preserve the pretty output. See
