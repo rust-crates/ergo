@@ -39,7 +39,7 @@
 //! });
 //!
 //! // spawn and join N number threads
-//! join!{
+//! pool_join!{
 //!     {
 //!         let s = send.clone();
 //!         // do some expensive function
@@ -83,12 +83,16 @@
 //! # fn main() {
 //! let (s, r) = chan::sync(0);
 //!
-//! let v = vec!['a', 'b', 'c', 'd'];
-//! v.into_par_iter().map(|letter| {
-//!     take!(=s);
-//!     for _ in 0..10 {
-//!         s.send(letter);
-//!     }
+//! // one thread that is sending values using multiple threads
+//! let sending = spawn(|| {
+//!     take!(s);
+//!     let v = vec!['a', 'b', 'c', 'd'];
+//!     v.into_par_iter().map(|letter| {
+//!         take!(=s);
+//!         for _ in 0..10 {
+//!             s.send(letter);
+//!         }
+//!     });
 //! });
 //!
 //! // A wait group lets us synchronize the completion of multiple threads.
@@ -105,7 +109,7 @@
 //!     });
 //! }
 //!
-//! drop(s); // drop the sender, else you will get a deadlock
+//! sending.finish();
 //!
 //! // If this was the end of the process and we didn't call `wg.wait()`, then
 //! // the process might quit before all of the consumers were done.
@@ -175,7 +179,7 @@ impl<T: Send + 'static> FinishHandle<T> for ::std::thread::JoinHandle<T> {
 /// the rayon threadpool and are not necessarily guaranteed to run in parallel.
 ///
 /// The fact that they are scoped means that you can reference variables from the current stack,
-/// since the thread is guaranteed to terminate after the `join!` statement is complete.
+/// since the thread is guaranteed to terminate after the `pool_join!` statement is complete.
 ///
 /// This is slower than using _either_ `rayon::join` or rayon's parallel iterators. It also
 /// requires heap allocations. See the rayon documentation for [`scope`](../rayon/fn.scope.html)
@@ -201,7 +205,7 @@ impl<T: Send + 'static> FinishHandle<T> for ::std::thread::JoinHandle<T> {
 ///     recv.iter().sum()
 /// });
 ///
-/// join!{
+/// pool_join!{
 ///     {
 ///         let send = send.clone();
 ///         send.send(4);
@@ -221,7 +225,7 @@ impl<T: Send + 'static> FinishHandle<T> for ::std::thread::JoinHandle<T> {
 /// # }
 /// ```
 #[macro_export]
-macro_rules! join {
+macro_rules! pool_join {
     ( $( $thread:expr ),* $(,)* ) => {
         rayon::scope(|s| {
             $(
