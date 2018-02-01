@@ -1,18 +1,20 @@
-//! ergo_sync: making creating and synchronizing threads ergonomic, therefore fun!
+//! make creating and synchronizing threads ergonomic, therefore fun!
 //!
 //! This is the synchronization library as part of the `ergo` crates ecosystem. It contains useful
 //! types, traits and functions for spawning threads and synchronizing them. It is named `sync`
-//! because of `std::sync` and because it is _not_ async, which is a spearate part of the
+//! because of `std::sync` and because it is _not_ async, which is/will be a spearate part of the
 //! ergo ecocystem.
-//!
 //!
 //! The crates that are wraped/exported are:
 //!
 //! - [`rayon`](https://github.com/rayon-rs/rayon): Rayon: A data parallelism library for Rust
 //! - [`chan`](https://github.com/BurntSushi/chan): Multi-producer, multi-consumer concurrent
 //!   channel for Rust.
+//! - [`taken`](https://github.com/vitiral/taken): macros for taking ownership
 //!
 //! Consider supporting their development individually and starring them on github.
+//!
+//! > **This crate is a WIP. More docs will be added in the future.**
 //!
 //! # Examples
 //!
@@ -21,8 +23,6 @@
 //! ```rust
 //! #[macro_use] extern crate ergo_sync;
 //! use ergo_sync::*;
-//! use ergo_sync::rayon::prelude::*;
-//! use std_prelude::*;
 //!
 //! # fn main() {
 //! let val = 42;
@@ -30,11 +30,11 @@
 //! // rendezvous channel
 //! let (send, recv) = chan::sync(0);
 //!
-//! // The consumer must be spawned in a thread or we risk deadlock.
-//! // Do NOT put the consumer in the threadpool, as threadpools
-//! // do not guarantee >1 threads running at a time.
-//! let consumer = spawn(move|| -> u64 {
-//!     let recv = recv;
+//! // The consumer must be spawned in its own thread or we risk
+//! // deadlock. Do NOT put the consumer in the threadpool, as
+//! // threadpools do not guarantee >1 threads running at a time.
+//! let consumer = spawn(|| -> u64 {
+//!     take!(recv); // same as `let recv = recv`
 //!     recv.iter().sum()
 //! });
 //!
@@ -48,7 +48,6 @@
 //!     {
 //!         // Each function can also use rayon's traits to do iteration in parallel.
 //!         take!(=send as s); // same as `let s = send.clone()`
-//!         let s = send.clone();
 //!         (0..1000_u64).into_par_iter().for_each(|n| {
 //!             s.send(n * 42);
 //!         });
@@ -72,22 +71,27 @@
 //! ```
 
 #[allow(unused_imports)]
-#[macro_use]
+#[macro_use(take)]
 extern crate taken;
+#[allow(unused_imports)]
+#[macro_use(chan_select)]
 pub extern crate chan;
 pub extern crate rayon;
 pub extern crate std_prelude;
 
-pub use taken::*;
-pub use chan::{after, after_ms, tick, tick_ms, Receiver, Sender};
+#[allow(unused_imports)] // this actually exports the macro
+use chan::*;
+#[allow(unused_imports)] // this actually exports the macro
+use taken::*;
+use std_prelude::*;
+
 pub use rayon::prelude::*;
 
+// -------- std_prelude --------
 // Types
 pub use std_prelude::{Arc, Duration, Mutex};
-
 // Atomics
 pub use std_prelude::{AtomicBool, AtomicIsize, AtomicOrdering, AtomicUsize, ATOMIC_USIZE_INIT};
-
 // Functions
 pub use std_prelude::{sleep, spawn};
 
@@ -155,15 +159,15 @@ impl<T: Send + 'static> FinishHandle<T> for ::std::thread::JoinHandle<T> {
 ///
 /// join!{
 ///     {
-///         let s = send.clone();
-///         s.send(4);
+///         let send = send.clone();
+///         send.send(4);
 ///     },
 ///     {
-///         let s = send.clone();
-///         s.send(12);
+///         take!(=send); // let send = send.clone()
+///         send.send(12);
 ///     },
 ///     {
-///         let s = send.clone();
+///         take!(=send as s); // let s = send.clone()
 ///         s.send(26);
 ///     },
 /// };
@@ -175,7 +179,7 @@ impl<T: Send + 'static> FinishHandle<T> for ::std::thread::JoinHandle<T> {
 #[macro_export]
 macro_rules! join {
     ( $( $thread:expr ),* $(,)* ) => {
-        ::ergo_sync::rayon::scope(|s| {
+        rayon::scope(|s| {
             $(
                 s.spawn(|_| $thread);
             )*
@@ -183,9 +187,11 @@ macro_rules! join {
     };
 }
 
-/// Just sleep for a certain number of milliseconds
+/// Just sleep for a certain number of milliseconds.
 ///
 /// Equivalent of `sleep(Duration::from_millis(millis))`
+///
+/// This function exists in `std::thread`, so it created here instead.
 ///
 /// # Examples
 /// ```rust
