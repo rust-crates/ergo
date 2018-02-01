@@ -18,7 +18,7 @@
 //!
 //! # Examples
 //!
-//! Here is an example of all of the features together.
+//! ## Example: most of the features together
 //!
 //! ```rust
 //! #[macro_use] extern crate ergo_sync;
@@ -68,6 +68,50 @@
 //!     sleep_ms(300);
 //!     *v as u64 * 100
 //! }
+//! ```
+//!
+//! # Example: multiple producers and multiple consumers using channels
+//!
+//! This example is addapted from the [chan docs].
+//!
+//! [chan docs]: https://docs.rs/chan/0.1.20/chan/#example-multiple-producers-and-multiple-consumers
+//!
+//! ```
+//! #[macro_use] extern crate ergo_sync;
+//! use ergo_sync::*;
+//!
+//! # fn main() {
+//! let (s, r) = chan::sync(0);
+//!
+//! let v = vec!['a', 'b', 'c', 'd'];
+//! v.into_par_iter().map(|letter| {
+//!     take!(=s);
+//!     for _ in 0..10 {
+//!         s.send(letter);
+//!     }
+//! });
+//!
+//! // A wait group lets us synchronize the completion of multiple threads.
+//! let wg = chan::WaitGroup::new();
+//! for _ in 0..4 {
+//!     wg.add(1);
+//!     let wg = wg.clone();
+//!     let r = r.clone();
+//!     spawn(move || {
+//!         for letter in r {
+//!             println!("Received letter: {}", letter);
+//!         }
+//!         wg.done();
+//!     });
+//! }
+//!
+//! drop(s); // drop the sender, else you will get a deadlock
+//!
+//! // If this was the end of the process and we didn't call `wg.wait()`, then
+//! // the process might quit before all of the consumers were done.
+//! // `wg.wait()` will block until all `wg.done()` calls have finished.
+//! wg.wait();
+//! # }
 //! ```
 
 #[allow(unused_imports)]
