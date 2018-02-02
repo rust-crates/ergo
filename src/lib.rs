@@ -14,7 +14,40 @@
 //!
 //! Consider supporting their development individually and starring them on github.
 //!
-//! > **This crate is a WIP. More docs will be added in the future.**
+//! # How to Use
+//!
+//! Use this library with:
+//!
+//! ```rust
+//! #[macro_use] extern crate ergo_sync;
+//! use ergo_sync::*;
+//! # fn main() {}
+//! ```
+//!
+//! It provides the following types and modules:
+//!
+//! - **[`ch` module]**: channel types from [`crossbeam_channel`]
+//! - **[`thread_scope`]**: use for creating scoped threads.
+//! - **[`rayon` prelude]**: for parallizing iterators. See the examples and the rayon crate itself.
+//! - **[`spawn`]**: the standad `std::thread::spawn` function.
+//!
+//! In addition it provides the following helper macros:
+//!
+//! - **[`take!`]**: for expressing ownership consisely. You will move or clone
+//!   variables extremely often in threads, this helps you express that better than
+//!   `let v = v.clone()`.
+//! - **[`ch!`]**: deal with channels with go-like syntax and panic with helpful error messages on
+//!   when sending/receiving on a channel is invalid.
+//! - **[`select_loop!`]**: for selecting from multiple channels.
+//!
+//! [`take!`]: macro.take.html
+//! [`rayon` prelude]: ../rayon/index.html
+//! [`ch` module]: ch/index.html
+//! [`crossbeam_channel`]: ../crossbeam_channel/index.html
+//! [`ch!`]: macro.ch.html
+//! [`select_loop!`]: macro.select_loop.html
+//! [`spawn`]: fn.spawn.html
+//! [`thread_scope`]: fn.thread_scope.html
 //!
 //! # Examples
 //!
@@ -46,7 +79,7 @@
 //!     sc.spawn(|| {
 //!         take!(s);
 //!         // do some expensive function
-//!         s.send(42_u64.pow(4)).unwrap();
+//!         ch!(s <- 42_u64.pow(4));
 //!     });
 //!
 //!     take!(=send as s);
@@ -55,16 +88,16 @@
 //!         // Each function can also use rayon's traits to do
 //!         // iteration in parallel.
 //!         (0..1000_u64).into_par_iter().for_each(|n| {
-//!             s.send(n * 42).unwrap();
+//!             ch!(s <- n * 42);
 //!         });
 //!     });
 //!
 //!     // Always have your final producer take `send` without
-//!     // first cloning it. This will drop it and and prevent
+//!     // cloning it. This will drop it and and prevent
 //!     // deadlocks.
 //!     sc.spawn(|| {
 //!         take!(send, &external_val as val);
-//!         send.send(expensive_fn(val)).unwrap();
+//!         ch!(send <- expensive_fn(val));
 //!     });
 //!
 //!     consumer.finish()
@@ -80,6 +113,7 @@
 //!     *v as u64 * 100
 //! }
 //! ```
+//!
 //! ### Alternatives to `thread_scope`
 //! You can also use [`rayon::scope`](../rayon/fn.scope.html) if you know that your threads
 //! will be doing work (i.e. are not IO bound). However, do _not_ put both produers and consumers
@@ -87,9 +121,6 @@
 //! (hence you may inroduce deadlock).
 //!
 //! It is safe to mix [`spawn`], [`thread_scope`] and rayon threads.
-//!
-//! [`spawn`]: fn.spawn.html
-//! [`thread_scope`]: fn.thread_scope.html
 //!
 //! # Example: multiple producers and multiple consumers using channels
 //!
@@ -102,23 +133,17 @@
 //! use ergo_sync::*;
 //!
 //! # fn main() {
-//! let receiving = {
-//!     // This scope prevents us from forgetting to drop the sending channel,
-//!     // as both `send` and `recv` are dropped at the end of the scope.
+//! thread_scope(|sc| {
 //!     let (send, recv) = ch::bounded(0);
 //!
-//!     // Kick off the receiving threads.
-//!     //
-//!     // Note that these do _not_ run in the rayon thread pool,
-//!     // they are simple OS level threads from `std::thread::spawn`.
-//!     let mut receiving = Vec::with_capacity(4);
+//!     // Kick off the receiving threads as scoped threads
 //!     for _ in 0..4 {
-//!         take!(=recv as r); // take a clone of `recv`
-//!         receiving.push(spawn(|| {
-//!             for letter in r {
+//!         take!(=recv);
+//!         sc.spawn(|| {
+//!             for letter in recv {
 //!                 println!("Received letter: {}", letter);
 //!             }
-//!         }));
+//!         });
 //!     }
 //!
 //!     // Send values in parallel using the rayon thread pool.
@@ -126,33 +151,16 @@
 //!         .chars()
 //!         .collect();
 //!     chars.into_par_iter().map(|letter| {
-//!         take!(=send as s); // take a clone of `send`
+//!         take!(=send); // take a clone of `send`
 //!         for _ in 0..10 {
-//!             s.send(letter).unwrap();
+//!             ch!(send <- letter);
 //!         }
 //!     });
 //!
-//!     // You must wait for the threads _outside_ of this scope, else you
-//!     // will get deadlock.
-//!     //
-//!     // You could also call `drop(send)`, in which case you would not
-//!     // need the scope at all. However, if you had more than one sending
-//!     // channel you would also need to remember to drop _that_, etc etc.
-//!     receiving
-//! };
-//!
-//! // Wait until all threads have finished before exiting.
-//! //
-//! // Alternatively we could have used `ch::WaitGroup` in the
-//! // receiving threads to keep track of when threads finished,
-//! // however we would have to be diligent to make sure we don't
-//! // forget to call `wg.add/done` at the appropriate times.
-//! //
-//! // `ch::WaitGroup` scales much better... but how often
-//! // are you tracking more than 100 threads?
-//! for r in receiving {
-//!     r.finish();
-//! }
+//!     // Note: the following occurs in order because of the scope:
+//!     // - `send` and `recv` are dropped
+//!     // - All threads are joined
+//! })
 //! # }
 //! ```
 //!
