@@ -18,48 +18,59 @@
 //!
 //! # Examples
 //!
-//! ## Example: most of the features together
+//! ## Example: producers and consumers
 //!
 //! ```rust
 //! #[macro_use] extern crate ergo_sync;
 //! use ergo_sync::*;
 //!
 //! # fn main() {
-//! let val = 42;
+//! let external_val = 42;
 //!
-//! // rendezvous channel
-//! let (send, recv) = ch::bounded(0);
+//! // the thread scope allows us to access local variables
+//! // and ensures that threads get joined.
+//! let result = thread_scope(|sc| {
+//!     // rendevous channel
+//!     let (send, recv) = ch::bounded(0);
 //!
-//! // The consumer must be spawned in its own thread or we risk
-//! // deadlock. Do NOT put the consumer in the threadpool, as
-//! // threadpools do not guarantee >1 threads running at a time.
-//! let consumer = spawn(|| -> u64 {
-//!     take!(recv); // same as `let recv = recv`
-//!     recv.iter().sum()
-//! });
+//!     // -------------------------------
+//!     // ---- spawn your consumers -----
+//!     let consumer = sc.spawn(|| -> u64 {
+//!         take!(recv); // same as `let recv = recv`
+//!         recv.iter().sum()
+//!     });
 //!
-//! // spawn and join N number threads
-//! pool_join!{
-//!     {
-//!         let s = send.clone();
+//!     // -------------------------------
+//!     // ---- spawn your producers -----
+//!     take!(=send as s); // same as `let s = send.clone()`
+//!     sc.spawn(|| {
+//!         take!(s);
 //!         // do some expensive function
 //!         s.send(42_u64.pow(4)).unwrap();
-//!     },
-//!     {
-//!         // Each function can also use rayon's traits to do iteration in parallel.
-//!         take!(=send as s); // same as `let s = send.clone()`
+//!     });
+//!
+//!     take!(=send as s);
+//!     sc.spawn(|| {
+//!         take!(s);
+//!         // Each function can also use rayon's traits to do
+//!         // iteration in parallel.
 //!         (0..1000_u64).into_par_iter().for_each(|n| {
 //!             s.send(n * 42).unwrap();
 //!         });
-//!     },
-//!     {
-//!         take!(=send as s, &val);
-//!         s.send(expensive_fn(val)).unwrap();
-//!     },
-//! };
+//!     });
 //!
-//! drop(send); // the channel must be dropped for iterator to stop.
-//! assert_eq!(24_094_896, consumer.finish());
+//!     // Always have your final producer take `send` without
+//!     // first cloning it. This will drop it and and prevent
+//!     // deadlocks.
+//!     sc.spawn(|| {
+//!         take!(send, &external_val as val);
+//!         send.send(expensive_fn(val)).unwrap();
+//!     });
+//!
+//!     consumer.finish()
+//! });
+//!
+//! assert_eq!(24_094_896, result);
 //! # }
 //!
 //! /// Really expensive function
@@ -69,6 +80,16 @@
 //!     *v as u64 * 100
 //! }
 //! ```
+//! ### Alternatives to `thread_scope`
+//! You can also use [`rayon::scope`](../rayon/fn.scope.html) if you know that your threads
+//! will be doing work (i.e. are not IO bound). However, do _not_ put both produers and consumers
+//! into rayon threads, as rayon only guarantees that 1 or more threads will be running at a time
+//! (hence you may inroduce deadlock).
+//!
+//! It is safe to mix [`spawn`], [`thread_scope`] and rayon threads.
+//!
+//! [`spawn`]: fn.spawn.html
+//! [`thread_scope`]: fn.thread_scope.html
 //!
 //! # Example: multiple producers and multiple consumers using channels
 //!
@@ -167,6 +188,7 @@ extern crate taken;
 pub extern crate crossbeam_channel;
 pub extern crate rayon;
 pub extern crate std_prelude;
+pub extern crate crossbeam_utils;
 
 
 // -------- std_prelude exports --------
@@ -190,11 +212,11 @@ pub use reexports::*;
 
 // -------- other exports --------
 pub use rayon::prelude::*;
+pub use crossbeam_utils::scoped::{scope as thread_scope, Scope, ScopedJoinHandle, ScopedThreadBuilder};
 /// Module for working with channels. Rexport of crossbeam_channel
 pub mod ch {
     pub use crossbeam_channel::*;
 }
-
 
 use std_prelude::*;
 
@@ -203,10 +225,6 @@ pub trait FinishHandle<T>
 where
     T: Send + 'static,
 {
-    fn finish(self) -> T;
-}
-
-impl<T: Send + 'static> FinishHandle<T> for ::std::thread::JoinHandle<T> {
     /// Finishes the thread, returning the value.
     ///
     /// This is the same as `JoinHandle::join()` except the unwrap is automatic.
@@ -224,70 +242,26 @@ impl<T: Send + 'static> FinishHandle<T> for ::std::thread::JoinHandle<T> {
     /// th.finish(); // as opposed to `th.join().unwrap()`
     /// # }
     /// ```
+    fn finish(self) -> T;
+}
+
+impl<T: Send + 'static> FinishHandle<T> for ::std::thread::JoinHandle<T> {
     fn finish(self) -> T {
         self.join()
             .expect("finish failed to join, thread is poisoned")
     }
 }
 
-/// Spawn multiple _scoped_ threads and then join them. These are run using the _current scope_ in
-/// the rayon threadpool and are not necessarily guaranteed to run in parallel.
-///
-/// The fact that they are scoped means that you can reference variables from the current stack,
-/// since the thread is guaranteed to terminate after the `pool_join!` statement is complete.
-///
-/// This is slower than using _either_ `rayon::join` or rayon's parallel iterators. It also
-/// requires heap allocations. See the rayon documentation for [`scope`](../rayon/fn.scope.html)
-/// for more details and alternatives.
-///
-/// Although it is less efficient than other APIs exposed by rayon, it can be unergonomic to use
-/// rayon directly when you want to run more than 2 workloads in parallel. This _is_ ergonomic and
-/// for most use cases is _efficient enough_.
-///
-/// # Examples
-/// ```
-/// #[macro_use] extern crate ergo_sync;
-/// use ergo_sync::*;
-///
-/// # fn main() {
-/// let (send, recv) = ch::bounded(0); // rendezvous channel
-///
-/// // The consumer must be spawned in a thread or we risk deadlock
-/// // Do NOT put the consumer in the threadpool, as it does not
-/// // guarantee >1 thread running at a time.
-/// let consumer = spawn(move|| {
-///     let recv = recv;
-///     recv.iter().sum()
-/// });
-///
-/// pool_join!{
-///     {
-///         let send = send.clone();
-///         send.send(4).unwrap();
-///     },
-///     {
-///         take!(=send); // let send = send.clone()
-///         send.send(12).unwrap();
-///     },
-///     {
-///         take!(=send as s); // let s = send.clone()
-///         s.send(26).unwrap();
-///     },
-/// };
-///
-/// drop(send); // the channel must be dropped for iterator to stop.
-/// assert_eq!(42, consumer.finish());
-/// # }
-/// ```
-#[macro_export]
-macro_rules! pool_join {
-    ( $( $thread:expr ),* $(,)* ) => {
-        rayon::scope(|s| {
-            $(
-                s.spawn(|_| $thread);
-            )*
-        });
-    };
+impl<T: Send + 'static> FinishHandle<T> for ScopedJoinHandle<T> {
+    /// The scoped threads already panic when poisoned, so this is equivalent to
+    /// `ScopedJoinHandle::join`
+    ///
+    /// > this behavior is not well documented. See [this issue].
+    ///
+    /// [this issue]: https://github.com/crossbeam-rs/crossbeam-utils/issues/6
+    fn finish(self) -> T {
+        self.join()
+    }
 }
 
 /// Just sleep for a certain number of milliseconds.
