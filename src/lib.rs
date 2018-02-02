@@ -281,3 +281,65 @@ macro_rules! pool_join {
 pub fn sleep_ms(millis: u64) {
     sleep(Duration::from_millis(millis))
 }
+
+/// Send or Receive on channels ergonomically.
+///
+/// This macro provides common syntax for using channels. `ch!(send <- value)` sends a value
+/// and `ch!(<- recv)` receives a value.
+///
+/// The operation blocks until it can be performed. It panics when/if the operation is not possible
+/// (because the other end of the channel has been closed).
+///
+/// Note that if a channel is leaked is it is possible for this operation to deadlock.
+///
+/// This macro works with both `crossbeam-channel` channels (which are exported by this crate) as
+/// well as `std::mspc` channels.
+///
+/// # Examples
+///
+/// ## Using `ergo::chan` channels
+/// ```rust
+/// #[macro_use] extern crate ergo_sync;
+/// use ergo_sync::*;
+/// # fn main() {
+/// let (send, recv) = chan::bounded(3);
+/// ch!(send <- 4);
+/// ch!(send <- 7);
+/// ch!(send <- 42);
+/// assert_eq!(4, ch!(<- recv));
+/// assert_eq!(7, ch!(<- recv));
+/// let v = ch!(<- recv);
+/// assert_eq!(42, v);
+/// # }
+/// ```
+///
+/// ## Using `std::mspc` channels
+/// ```rust
+/// #[macro_use] extern crate ergo_sync;
+/// use std::sync::mpsc::sync_channel;
+/// # fn main() {
+/// let (send, recv) = sync_channel(3);
+/// ch!(send <- 4);
+/// ch!(send <- 7);
+/// ch!(send <- 42);
+/// assert_eq!(4, ch!(<- recv));
+/// assert_eq!(7, ch!(<- recv));
+/// let v = ch!(<- recv);
+/// assert_eq!(42, v);
+/// # }
+/// ```
+#[macro_export]
+macro_rules! ch {
+    [$send:ident <- $value:expr] => {
+        match $send.send($value) {
+            Ok(_) => {},
+            Err(err) => panic!("{} for `send`", err),
+        }
+    };
+    [<- $recv:ident] => {
+        match $recv.recv() {
+            Ok(v) => v,
+            Err(err) => panic!("{} for `recv`", err),
+        }
+    }
+}
