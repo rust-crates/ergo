@@ -4,7 +4,9 @@ name = "ergo_sync"
 version = "0.1.0"
 
 [dependencies]
-chan = "0.1.20"
+crossbeam = "0.3.2"
+crossbeam-channel = "0.1.2"
+crossbeam-utils = "0.2.2"
 rayon = "0.9.0"
 std_prelude = "0.2.11"
 taken = "0.1.0"

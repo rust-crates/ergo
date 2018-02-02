@@ -28,7 +28,7 @@
 //! let val = 42;
 //!
 //! // rendezvous channel
-//! let (send, recv) = chan::sync(0);
+//! let (send, recv) = chan::bounded(0);
 //!
 //! // The consumer must be spawned in its own thread or we risk
 //! // deadlock. Do NOT put the consumer in the threadpool, as
@@ -43,18 +43,18 @@
 //!     {
 //!         let s = send.clone();
 //!         // do some expensive function
-//!         s.send(42_u64.pow(4));
+//!         s.send(42_u64.pow(4)).unwrap();
 //!     },
 //!     {
 //!         // Each function can also use rayon's traits to do iteration in parallel.
 //!         take!(=send as s); // same as `let s = send.clone()`
 //!         (0..1000_u64).into_par_iter().for_each(|n| {
-//!             s.send(n * 42);
+//!             s.send(n * 42).unwrap();
 //!         });
 //!     },
 //!     {
 //!         take!(=send as s, &val);
-//!         s.send(expensive_fn(val));
+//!         s.send(expensive_fn(val)).unwrap();
 //!     },
 //! };
 //!
@@ -81,67 +81,94 @@
 //! use ergo_sync::*;
 //!
 //! # fn main() {
-//! let (s, r) = chan::sync(0);
+//! let receiving = {
+//!     // This scope prevents us from forgetting to drop the sending channel,
+//!     // as both `send` and `recv` are dropped at the end of the scope.
+//!     let (send, recv) = chan::bounded(0);
 //!
-//! // one thread that is sending values using multiple threads
-//! let sending = spawn(|| {
-//!     take!(s);
-//!     let v = vec!['a', 'b', 'c', 'd'];
-//!     v.into_par_iter().map(|letter| {
-//!         take!(=s);
+//!     // Kick off the receiving threads.
+//!     //
+//!     // Note that these do _not_ run in the rayon thread pool,
+//!     // they are simple OS level threads from `std::thread::spawn`.
+//!     let mut receiving = Vec::with_capacity(4);
+//!     for _ in 0..4 {
+//!         take!(=recv as r); // take a clone of `recv`
+//!         receiving.push(spawn(|| {
+//!             for letter in r {
+//!                 println!("Received letter: {}", letter);
+//!             }
+//!         }));
+//!     }
+//!
+//!     // Send values in parallel using the rayon thread pool.
+//!     let mut chars: Vec<_> = "A man, a plan, a canal - Panama!"
+//!         .chars()
+//!         .collect();
+//!     chars.into_par_iter().map(|letter| {
+//!         take!(=send as s); // take a clone of `send`
 //!         for _ in 0..10 {
-//!             s.send(letter);
+//!             s.send(letter).unwrap();
 //!         }
 //!     });
-//! });
 //!
-//! // A wait group lets us synchronize the completion of multiple threads.
-//! let wg = chan::WaitGroup::new();
-//! for _ in 0..4 {
-//!     wg.add(1);
-//!     let wg = wg.clone();
-//!     let r = r.clone();
-//!     spawn(move || {
-//!         for letter in r {
-//!             println!("Received letter: {}", letter);
-//!         }
-//!         wg.done();
-//!     });
+//!     // You must wait for the threads _outside_ of this scope, else you
+//!     // will get deadlock.
+//!     //
+//!     // You could also call `drop(send)`, in which case you would not
+//!     // need the scope at all. However, if you had more than one sending
+//!     // channel you would also need to remember to drop _that_, etc etc.
+//!     receiving
+//! };
+//!
+//! // Wait until all threads have finished before exiting.
+//! //
+//! // Alternatively we could have used `chan::WaitGroup` in the
+//! // receiving threads to keep track of when threads finished,
+//! // however we would have to be diligent to make sure we don't
+//! // forget to call `wg.add/done` at the appropriate times.
+//! //
+//! // `chan::WaitGroup` scales much better... but how often
+//! // are you tracking more than 100 threads?
+//! for r in receiving {
+//!     r.finish();
 //! }
-//!
-//! sending.finish();
-//!
-//! // If this was the end of the process and we didn't call `wg.wait()`, then
-//! // the process might quit before all of the consumers were done.
-//! // `wg.wait()` will block until all `wg.done()` calls have finished.
-//! wg.wait();
 //! # }
 //! ```
 
 #[allow(unused_imports)]
 #[macro_use(take)]
 extern crate taken;
-#[allow(unused_imports)]
-#[macro_use(chan_select)]
-pub extern crate chan;
+pub extern crate crossbeam_channel;
 pub extern crate rayon;
 pub extern crate std_prelude;
 
-#[allow(unused_imports)] // this actually exports the macro
-use chan::*;
-#[allow(unused_imports)] // this actually exports the macro
-use taken::*;
-use std_prelude::*;
+pub mod chan {
+    pub use crossbeam_channel::*;
+}
 
-pub use rayon::prelude::*;
-
-// -------- std_prelude --------
+// -------- std_prelude exports --------
 // Types
 pub use std_prelude::{Arc, Duration, Mutex};
 // Atomics
 pub use std_prelude::{AtomicBool, AtomicIsize, AtomicOrdering, AtomicUsize, ATOMIC_USIZE_INIT};
 // Functions
 pub use std_prelude::{sleep, spawn};
+
+// -------- macro exports--------
+#[allow(unused_imports)]
+#[doc(hidden)]
+pub mod reexports {
+    // hack to rexport macros
+    #[doc(hidden)] pub use chan::*;
+    #[doc(hidden)] pub use taken::*;
+}
+pub use reexports::*;
+
+// -------- other exports --------
+pub use rayon::prelude::*;
+
+
+use std_prelude::*;
 
 /// Convinience trait mimicking `std::thread::JoinHandle` with better ergonomics.
 pub trait FinishHandle<T>
@@ -195,7 +222,7 @@ impl<T: Send + 'static> FinishHandle<T> for ::std::thread::JoinHandle<T> {
 /// use ergo_sync::*;
 ///
 /// # fn main() {
-/// let (send, recv) = chan::sync(0); // rendezvous channel
+/// let (send, recv) = chan::bounded(0); // rendezvous channel
 ///
 /// // The consumer must be spawned in a thread or we risk deadlock
 /// // Do NOT put the consumer in the threadpool, as it does not
@@ -208,15 +235,15 @@ impl<T: Send + 'static> FinishHandle<T> for ::std::thread::JoinHandle<T> {
 /// pool_join!{
 ///     {
 ///         let send = send.clone();
-///         send.send(4);
+///         send.send(4).unwrap();
 ///     },
 ///     {
 ///         take!(=send); // let send = send.clone()
-///         send.send(12);
+///         send.send(12).unwrap();
 ///     },
 ///     {
 ///         take!(=send as s); // let s = send.clone()
-///         s.send(26);
+///         s.send(26).unwrap();
 ///     },
 /// };
 ///
