@@ -7,9 +7,9 @@
 //!
 //! The crates that are wraped/exported are:
 //!
+//! - [`crossbeam_channel`](https://github.com/crossbeam-rs/crossbeam-channel):
+//!   Multi-producer multi-consumer channels for message passing
 //! - [`rayon`](https://github.com/rayon-rs/rayon): Rayon: A data parallelism library for Rust
-//! - [`chan`](https://github.com/BurntSushi/chan): Multi-producer, multi-consumer concurrent
-//!   channel for Rust.
 //! - [`taken`](https://github.com/vitiral/taken): macros for taking ownership
 //!
 //! Consider supporting their development individually and starring them on github.
@@ -28,7 +28,7 @@
 //! let val = 42;
 //!
 //! // rendezvous channel
-//! let (send, recv) = chan::bounded(0);
+//! let (send, recv) = ch::bounded(0);
 //!
 //! // The consumer must be spawned in its own thread or we risk
 //! // deadlock. Do NOT put the consumer in the threadpool, as
@@ -84,7 +84,7 @@
 //! let receiving = {
 //!     // This scope prevents us from forgetting to drop the sending channel,
 //!     // as both `send` and `recv` are dropped at the end of the scope.
-//!     let (send, recv) = chan::bounded(0);
+//!     let (send, recv) = ch::bounded(0);
 //!
 //!     // Kick off the receiving threads.
 //!     //
@@ -122,15 +122,39 @@
 //!
 //! // Wait until all threads have finished before exiting.
 //! //
-//! // Alternatively we could have used `chan::WaitGroup` in the
+//! // Alternatively we could have used `ch::WaitGroup` in the
 //! // receiving threads to keep track of when threads finished,
 //! // however we would have to be diligent to make sure we don't
 //! // forget to call `wg.add/done` at the appropriate times.
 //! //
-//! // `chan::WaitGroup` scales much better... but how often
+//! // `ch::WaitGroup` scales much better... but how often
 //! // are you tracking more than 100 threads?
 //! for r in receiving {
 //!     r.finish();
+//! }
+//! # }
+//! ```
+//!
+//! ## Example: using `select_loop` for channels
+//!
+//! ```rust
+//! #[macro_use] extern crate ergo_sync;
+//! use ergo_sync::*;
+//!
+//! # fn main() {
+//! let (tx1, rx1) = ch::unbounded();
+//! let (tx2, rx2) = ch::unbounded();
+//!
+//! spawn(move || ch!(tx1 <- "foo"));
+//! spawn(move || ch!(tx2 <- "bar"));
+//!
+//! select_loop! {
+//!     recv(rx1, msg) => {
+//!         println!("Received a message from the first channel: {}", msg);
+//!     }
+//!     recv(rx2, msg) => {
+//!         println!("Received a message from the second channel: {}", msg);
+//!     }
 //! }
 //! # }
 //! ```
@@ -138,13 +162,12 @@
 #[allow(unused_imports)]
 #[macro_use(take)]
 extern crate taken;
+#[allow(unused_imports)]
+#[macro_use(select_loop)]
 pub extern crate crossbeam_channel;
 pub extern crate rayon;
 pub extern crate std_prelude;
 
-pub mod chan {
-    pub use crossbeam_channel::*;
-}
 
 // -------- std_prelude exports --------
 // Types
@@ -159,13 +182,18 @@ pub use std_prelude::{sleep, spawn};
 #[doc(hidden)]
 pub mod reexports {
     // hack to rexport macros
-    #[doc(hidden)] pub use chan::*;
     #[doc(hidden)] pub use taken::*;
+    #[doc(hidden)] pub use crossbeam_channel::*;
 }
+#[doc(hidden)]
 pub use reexports::*;
 
 // -------- other exports --------
 pub use rayon::prelude::*;
+/// Module for working with channels. Rexport of crossbeam_channel
+pub mod ch {
+    pub use crossbeam_channel::*;
+}
 
 
 use std_prelude::*;
@@ -222,7 +250,7 @@ impl<T: Send + 'static> FinishHandle<T> for ::std::thread::JoinHandle<T> {
 /// use ergo_sync::*;
 ///
 /// # fn main() {
-/// let (send, recv) = chan::bounded(0); // rendezvous channel
+/// let (send, recv) = ch::bounded(0); // rendezvous channel
 ///
 /// // The consumer must be spawned in a thread or we risk deadlock
 /// // Do NOT put the consumer in the threadpool, as it does not
@@ -302,7 +330,7 @@ pub fn sleep_ms(millis: u64) {
 /// #[macro_use] extern crate ergo_sync;
 /// use ergo_sync::*;
 /// # fn main() {
-/// let (send, recv) = chan::bounded(3);
+/// let (send, recv) = ch::bounded(3);
 /// ch!(send <- 4);
 /// ch!(send <- 7);
 /// ch!(send <- 42);
