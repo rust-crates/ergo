@@ -24,145 +24,36 @@
 //! # fn main() {}
 //! ```
 //!
-//! It provides the following types and modules:
+//! It provides the following types and modules for most use cases.
 //!
-//! - **[`ch` module]**: channel types from [`crossbeam_channel`]
-//! - **[`thread_scope`]**: use for creating scoped threads.
-//! - **[`rayon` prelude]**: for parallizing iterators. See the examples and the rayon crate itself.
-//! - **[`spawn`]**: the standad `std::thread::spawn` function.
+//! - **[`ch` module]**: for channel types (also see the [`ch!`] and [`select_loop!`] macros).
+//! - **[`scoped` module]**: for creating scoped threads.
+//! - **[`rayon` prelude]**: for parallizing iterators using a work-stealing threadpool. Use this
+//!   (`par_iter()` method) if you have to parallize a ton of things and you want it to just happen
+//!   as quickly as possible with as few threads as possible.
+//! - **[`spawn`]**: the standad `std::thread::spawn` which spawns a regular OS thread. The
+//!   advantage of this (over scoped threads) is that it can outlive the current function. The
+//!   disadvantage is that as far as the compiler knows it _always_ outlives the current function,
+//!   meaning it must own all of its variables (or they have to be `'static`).
 //!
 //! In addition it provides the following helper macros:
 //!
 //! - **[`take!`]**: for expressing ownership consisely. You will move or clone
 //!   variables extremely often in threads, this helps you express that better than
 //!   `let v = v.clone()`.
-//! - **[`ch!`]**: deal with channels with go-like syntax and panic with helpful error messages on
-//!   when sending/receiving on a channel is invalid.
+//! - **[`ch!`]**: deal with channels with golang-like syntax and panic with helpful error messages
+//!   on when sending/receiving on a channel is invalid.
 //! - **[`select_loop!`]**: for selecting from multiple channels.
 //!
-//! [`take!`]: macro.take.html
-//! [`rayon` prelude]: ../rayon/index.html
 //! [`ch` module]: ch/index.html
-//! [`crossbeam_channel`]: ../crossbeam_channel/index.html
+//! [`scoped` module]: scoped/index.html
+//! [`spawn`]: fn.spawn.html
+//! [`rayon` prelude]: ../rayon/index.html
+//! [`take!`]: macro.take.html
 //! [`ch!`]: macro.ch.html
 //! [`select_loop!`]: macro.select_loop.html
-//! [`spawn`]: fn.spawn.html
-//! [`thread_scope`]: fn.thread_scope.html
 //!
 //! # Examples
-//!
-//! ## Example: producers and consumers
-//!
-//! ```rust
-//! #[macro_use] extern crate ergo_sync;
-//! use ergo_sync::*;
-//!
-//! # fn main() {
-//! let external_val = 42;
-//!
-//! // the thread scope allows us to access local variables
-//! // and ensures that threads get joined.
-//! let result = thread_scope(|sc| {
-//!     // rendevous channel
-//!     let (send, recv) = ch::bounded(0);
-//!
-//!     // -------------------------------
-//!     // ---- spawn your consumers -----
-//!     let consumer = sc.spawn(|| -> u64 {
-//!         take!(recv); // same as `let recv = recv`
-//!         recv.iter().sum()
-//!     });
-//!
-//!     // -------------------------------
-//!     // ---- spawn your producers -----
-//!     take!(=send as s); // same as `let s = send.clone()`
-//!     sc.spawn(|| {
-//!         take!(s);
-//!         // do some expensive function
-//!         ch!(s <- 42_u64.pow(4));
-//!     });
-//!
-//!     take!(=send as s);
-//!     sc.spawn(|| {
-//!         take!(s);
-//!         // Each function can also use rayon's traits to do
-//!         // iteration in parallel.
-//!         (0..1000_u64).into_par_iter().for_each(|n| {
-//!             ch!(s <- n * 42);
-//!         });
-//!     });
-//!
-//!     // Always have your final producer take `send` without
-//!     // cloning it. This will drop it and and prevent
-//!     // deadlocks.
-//!     sc.spawn(|| {
-//!         take!(send, &external_val as val);
-//!         ch!(send <- expensive_fn(val));
-//!     });
-//!
-//!     consumer.finish()
-//! });
-//!
-//! assert_eq!(24_094_896, result);
-//! # }
-//!
-//! /// Really expensive function
-//! fn expensive_fn(v: &u32) -> u64 {
-//!     println!("Doing expensive thing");
-//!     sleep_ms(300);
-//!     *v as u64 * 100
-//! }
-//! ```
-//!
-//! ### Alternatives to `thread_scope`
-//! You can also use [`rayon::scope`](../rayon/fn.scope.html) if you know that your threads
-//! will be doing work (i.e. are not IO bound). However, do _not_ put both produers and consumers
-//! into rayon threads, as rayon only guarantees that 1 or more threads will be running at a time
-//! (hence you may inroduce deadlock).
-//!
-//! It is safe to mix [`spawn`], [`thread_scope`] and rayon threads.
-//!
-//! # Example: multiple producers and multiple consumers using channels
-//!
-//! This example is addapted from the [chan docs].
-//!
-//! [chan docs]: https://docs.rs/chan/0.1.20/chan/#example-multiple-producers-and-multiple-consumers
-//!
-//! ```
-//! #[macro_use] extern crate ergo_sync;
-//! use ergo_sync::*;
-//!
-//! # fn main() {
-//! thread_scope(|sc| {
-//!     let (send, recv) = ch::bounded(0);
-//!
-//!     // Kick off the receiving threads as scoped threads
-//!     for _ in 0..4 {
-//!         take!(=recv);
-//!         sc.spawn(|| {
-//!             for letter in recv {
-//!                 println!("Received letter: {}", letter);
-//!             }
-//!         });
-//!     }
-//!
-//!     // Send values in parallel using the rayon thread pool.
-//!     let mut chars: Vec<_> = "A man, a plan, a canal - Panama!"
-//!         .chars()
-//!         .collect();
-//!     chars.into_par_iter().map(|letter| {
-//!         take!(=send); // take a clone of `send`
-//!         for _ in 0..10 {
-//!             ch!(send <- letter);
-//!         }
-//!     });
-//!
-//!     // Note: the following occurs in order because of the scope:
-//!     // - `send` and `recv` are dropped
-//!     // - All threads are joined
-//! })
-//! # }
-//! ```
 //!
 //! ## Example: using `select_loop` for channels
 //!
@@ -187,6 +78,27 @@
 //! }
 //! # }
 //! ```
+//!
+//! # Additional Types
+//! The types and modules exported by default represent the most ones used. However, the sub-crates
+//! in this crate also support more specialized needs.
+//!
+//! These are slightly less ergonomic out of necessity, however they are not too bad once you get
+//! used to them.
+//!
+//! ## Creating and Using Thread Pools
+//!
+//! **[`rayon::ThreadPool`]** can be used create a rayon thread pool with an explicit number of
+//! threads. This can also create scoped threads. Note that the thread pool controls the number
+//! of threads executed for _all_ rayon functions, so while externally they are not ergonomic
+//! (you have to do quite a bit of work to set them up) any function internally will just
+//! "do what you expect" and use the threads you have initialized.
+//!
+//! `ThreadPool` is not exported explicitly as the usecases are rare, but definitely do exist. This
+//! is especially useful if you want to do (for example) IO work on a list of files. You know you
+//! want more threads than are nessary for pure "work" but still want to limit them.
+//!
+//! [`rayon::ThreadPool`]: ../rayon/struct.ThreadPool.html
 
 #[allow(unused_imports)]
 #[macro_use(take)]
@@ -220,11 +132,10 @@ pub use reexports::*;
 
 // -------- other exports --------
 pub use rayon::prelude::*;
-pub use crossbeam_utils::scoped::{scope as thread_scope, Scope, ScopedJoinHandle, ScopedThreadBuilder};
-/// Module for working with channels. Rexport of crossbeam_channel
-pub mod ch {
-    pub use crossbeam_channel::*;
-}
+
+pub mod ch;
+pub mod scoped;
+
 
 use std_prelude::*;
 
@@ -260,18 +171,6 @@ impl<T: Send + 'static> FinishHandle<T> for ::std::thread::JoinHandle<T> {
     }
 }
 
-impl<T: Send + 'static> FinishHandle<T> for ScopedJoinHandle<T> {
-    /// The scoped threads already panic when poisoned, so this is equivalent to
-    /// `ScopedJoinHandle::join`
-    ///
-    /// > this behavior is not well documented. See [this issue].
-    ///
-    /// [this issue]: https://github.com/crossbeam-rs/crossbeam-utils/issues/6
-    fn finish(self) -> T {
-        self.join()
-    }
-}
-
 /// Just sleep for a certain number of milliseconds.
 ///
 /// Equivalent of `sleep(Duration::from_millis(millis))`
@@ -294,20 +193,21 @@ pub fn sleep_ms(millis: u64) {
 
 /// Send or Receive on channels ergonomically.
 ///
-/// This macro provides common syntax for using channels. `ch!(send <- value)` sends a value
-/// and `ch!(<- recv)` receives a value.
+/// This macro provides common syntax for using channels.
 ///
-/// The operation blocks until it can be performed. It panics when/if the operation is not possible
-/// (because the other end of the channel has been closed).
+/// - `ch!(send <- value)`: blocks until a value is sent, panics if all receivers are dropped.
+/// - `ch!(<- recv)`: blocks until a value is received, panics if all senders are dropped.
+/// - `ch!(! <- recv)`: blocks until all senders are dropped, panics if a value is received. Used
+///   for signaling.
 ///
-/// Note that if a channel is leaked is it is possible for this operation to deadlock.
+/// Note that this operation can deadlock if a channel is leaked.
 ///
-/// This macro works with both `crossbeam-channel` channels (which are exported by this crate) as
-/// well as `std::mspc` channels.
+/// > This macro works with both `crossbeam-channel` channels (which are exported by this crate) as
+/// > well as `std::mspc` channels.
 ///
 /// # Examples
 ///
-/// ## Using `ergo::chan` channels
+/// ## Example: Using `ergo::chan` channels
 /// ```rust
 /// #[macro_use] extern crate ergo_sync;
 /// use ergo_sync::*;
@@ -320,10 +220,14 @@ pub fn sleep_ms(millis: u64) {
 /// assert_eq!(7, ch!(<- recv));
 /// let v = ch!(<- recv);
 /// assert_eq!(42, v);
+///
+/// drop(send);
+/// // ch!(<- recv); // panics
+/// ch!(! <- recv);  // succeeds
 /// # }
 /// ```
 ///
-/// ## Using `std::mspc` channels
+/// ## Example: Using `std::mspc` channels
 /// ```rust
 /// #[macro_use] extern crate ergo_sync;
 /// use std::sync::mpsc::sync_channel;
@@ -336,6 +240,10 @@ pub fn sleep_ms(millis: u64) {
 /// assert_eq!(7, ch!(<- recv));
 /// let v = ch!(<- recv);
 /// assert_eq!(42, v);
+///
+/// drop(send);
+/// // ch!(<- recv); // panics
+/// ch!(! <- recv);  // succeeds
 /// # }
 /// ```
 #[macro_export]
@@ -343,13 +251,19 @@ macro_rules! ch {
     [$send:ident <- $value:expr] => {
         match $send.send($value) {
             Ok(_) => {},
-            Err(err) => panic!("{} for `send`", err),
+            Err(err) => panic!("{} for `send`.", err),
         }
     };
     [<- $recv:ident] => {
         match $recv.recv() {
             Ok(v) => v,
-            Err(err) => panic!("{} for `recv`", err),
+            Err(err) => panic!("{} for `recv`.", err),
         }
-    }
+    };
+    [! <- $recv:ident] => {
+        match $recv.recv() {
+            Ok(v) => panic!("Got {:?} when expecting senders to be closed.", v),
+            Err(err) => {()},
+        }
+    };
 }
