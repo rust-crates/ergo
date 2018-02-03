@@ -55,29 +55,13 @@
 //!
 //! # Examples
 //!
-//! ## Example: using `select_loop` for channels
+//! ## Example: Channels
+//! See the docs for the [`ch` module].
 //!
-//! ```rust
-//! #[macro_use] extern crate ergo_sync;
-//! use ergo_sync::*;
 //!
-//! # fn main() {
-//! let (tx1, rx1) = ch::unbounded();
-//! let (tx2, rx2) = ch::unbounded();
+//! ## Example: Scoped Threads
+//! See the docs for the [`scoped` module].
 //!
-//! spawn(move || ch!(tx1 <- "foo"));
-//! spawn(move || ch!(tx2 <- "bar"));
-//!
-//! select_loop! {
-//!     recv(rx1, msg) => {
-//!         println!("Received a message from the first channel: {}", msg);
-//!     }
-//!     recv(rx2, msg) => {
-//!         println!("Received a message from the second channel: {}", msg);
-//!     }
-//! }
-//! # }
-//! ```
 //!
 //! # Additional Types
 //! The types and modules exported by default represent the most ones used. However, the sub-crates
@@ -106,10 +90,9 @@ extern crate taken;
 #[allow(unused_imports)]
 #[macro_use(select_loop)]
 pub extern crate crossbeam_channel;
+pub extern crate crossbeam_utils;
 pub extern crate rayon;
 pub extern crate std_prelude;
-pub extern crate crossbeam_utils;
-
 
 // -------- std_prelude exports --------
 // Types
@@ -124,10 +107,10 @@ pub use std_prelude::{sleep, spawn};
 #[doc(hidden)]
 pub mod reexports {
     // hack to rexport macros
-    #[doc(hidden)] pub use taken::*;
-    #[doc(hidden)] pub use crossbeam_channel::*;
+    #[doc(hidden)]
+    pub use taken::*;
+    pub use crossbeam_channel::*;
 }
-#[doc(hidden)]
 pub use reexports::*;
 
 // -------- other exports --------
@@ -135,7 +118,6 @@ pub use rayon::prelude::*;
 
 pub mod ch;
 pub mod scoped;
-
 
 use std_prelude::*;
 
@@ -195,15 +177,28 @@ pub fn sleep_ms(millis: u64) {
 ///
 /// This macro provides common syntax for using channels.
 ///
+/// Blocking syntax:
+///
 /// - `ch!(send <- value)`: blocks until a value is sent, panics if all receivers are dropped.
 /// - `ch!(<- recv)`: blocks until a value is received, panics if all senders are dropped.
 /// - `ch!(! <- recv)`: blocks until all senders are dropped, panics if a value is received. Used
 ///   for signaling.
 ///
-/// Note that this operation can deadlock if a channel is leaked.
-///
-/// > This macro works with both `crossbeam-channel` channels (which are exported by this crate) as
+/// > This syntax works with both `crossbeam-channel` channels (which are exported by this crate) as
 /// > well as `std::mspc` channels.
+///
+/// > Note that these operations can deadlock if a channel is leaked.
+///
+/// Non-Blocking syntax:
+///
+/// - `ch!(send <-? value)`: returns `None` if the value was sent, `Some(value)` if the value
+///   was not sent. Panics if all receivers are dropped.
+/// - `ch!(<-? recv)`: returns `None` if no value is received, `Some(value)` if a value is
+///   received. Panics if all senders are dropped.
+/// - `ch!(! <-? recv)`: returns `true` if there are still senders and `false` if the seners have
+///   been dropped. Panics if a value is received. Use with `while ch!(! <-? recv) { /* ... */ }`
+///
+/// > This syntax does _not_ work with `std::mspc` channels.
 ///
 /// # Examples
 ///
@@ -245,6 +240,35 @@ pub fn sleep_ms(millis: u64) {
 /// // ch!(<- recv); // panics
 /// ch!(! <- recv);  // succeeds
 /// # }
+///
+/// ## Example: using `try_send` and `try_recv` but panicing if disconnected
+/// ```rust
+/// #[macro_use] extern crate ergo_sync;
+/// use ergo_sync::*;
+/// # fn main() {
+/// let (send, recv) = ch::bounded(3);
+/// assert_eq!(None, ch!(<-? recv)); // no values sent yet
+///
+/// assert!(ch!(send <- 4).is_none());
+/// assert_eq!(Some(4), ch!(<-? recv));
+/// assert_eq!(None, ch!(<-? recv));
+///
+/// assert!(ch!(send <- 7).is_none());
+/// assert!(ch!(send <- 42).is_none());
+/// assert!(ch!(send <- 1).is_none());
+/// // further attemps return the value
+/// assert_eq!(Some(100), ch!(send <- 100));
+///
+/// assert_eq!(7, ch!(<-? recv));
+///
+/// assert_eq!(42, ch!(<-? recv));
+/// assert_eq!(None, ch!(<-? recv));
+/// assert!(ch!(! <-? recv)); // senders still exist
+///
+/// drop(send);
+/// // ch!(?<- recv); // panics
+/// ch!(! ?<- recv);  // succeeds
+/// # }
 /// ```
 #[macro_export]
 macro_rules! ch {
@@ -254,16 +278,45 @@ macro_rules! ch {
             Err(err) => panic!("{} for `send`.", err),
         }
     };
+
+    [$send:ident <-? $value:expr] => {
+        match $send.try_send($value) {
+            Ok(()) => None,
+            Err(ch::TrySendError::Full(v)) => Some(v),
+            Err(ch::TrySendError::Disconnected(_)) => {
+                panic!("Attempted to send a value but receivers are disconnected");
+            }
+        }
+    };
+
     [<- $recv:ident] => {
         match $recv.recv() {
             Ok(v) => v,
             Err(err) => panic!("{} for `recv`.", err),
         }
     };
+
+    [<-? $recv:ident] => {
+        match $recv.try_recv() {
+            Ok(v) => Some(v),
+            Err(ch::TryRecvError::Empty) => None,
+            Err(ch::TryRecvError::Disconnected) => {
+                panic!("Attempted to recv a value but senders are disconnected");
+            }
+        }
+    };
+
     [! <- $recv:ident] => {
         match $recv.recv() {
             Ok(v) => panic!("Got {:?} when expecting senders to be closed.", v),
-            Err(err) => {()},
+            Err(err) => (),
+        }
+    };
+    [! <-? $recv:ident] => {
+        match $recv.recv() {
+            Ok(v) => panic!("Got {:?} when expecting senders to be closed.", v),
+            Err(ch::TryRecvError::Empty) => true,  // senders still exist
+            Err(ch::TryRecvError::Disconnected) => false, // no more senders
         }
     };
 }
