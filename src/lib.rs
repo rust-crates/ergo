@@ -118,28 +118,36 @@
 //! of this crate as the example. The below code searches through the crate
 //! source looking for every use of the word "example".
 //!
+//! > Note: it is recommended to use [`ergo_fs`] to do filesystem operations, as all errors will
+//! > have the _context_ (path and action) of what caused the error and you will have access to
+//! > best in class filesystem operations like walking the directory structure and expressing
+//! > the types you expect. We do not use it here so we can focus on `ergo_sync`'s API.
+//!
+//! [`ergo_fs`] https://github.com/rust-crates/ergo_fs
+//!
 //! ```rust
 //! #[macro_use] extern crate ergo_sync;
 //! use ergo_sync::*;
 //! use std::fs;
 //! use std::io;
 //! use std::io::prelude::*;
-//! use std::path::PathBuf;
+//! use std::path::{Path, PathBuf};
 //!
 //! /// List the dir and return any paths found
-//! fn read_paths(dir: &str, send_paths: &Sender<PathBuf>, errs: &Sender<io::Error>) {
+//! fn read_paths<P: AsRef<Path>>(
+//!     dir: P, send_paths: &Sender<PathBuf>,
+//!     errs: &Sender<io::Error>,
+//! ) {
 //!     for entry in ch_try!(fs::read_dir(dir), errs, return) {
-//!         let e = ch_try!(entry, errs, continue);
-//!         // let e = match entry {
-//!         //     Ok(v) => v,
-//!         //     Err(e) => {
-//!         //         ch!(errs <- e);
-//!         //         continue;
-//!         //     }
-//!         // };
-//!         let meta = ch_try!(e.metadata(), errs, continue);
+//!         let entry = ch_try!(entry, errs, continue);
+//!         let meta = ch_try!(entry.metadata(), errs, continue);
 //!         if meta.is_file() {
-//!             ch!(send_paths <- e.path());
+//!             ch!(send_paths <- entry.path());
+//!         } else if meta.is_dir() {
+//!             // recurse into the path
+//!             read_paths(entry.path(), send_paths, errs);
+//!         } else {
+//!             // ignore symlinks for this example
 //!         }
 //!     }
 //! }
@@ -160,8 +168,20 @@
 //! }
 //!
 //! fn main() {
-//!     let (send_errs, recv_errs) = ch::unbounded();
+//!     let (send_errs, recv_errs) = ch::bounded(128);
 //!     let (send_paths, recv_paths) = ch::bounded(128);
+//!
+//!     // First we spawn a single thread to handle errors.
+//!     // In this case we will just count and log them.
+//!     let handle_errs = spawn(|| {
+//!         take!(recv_errs);
+//!         let mut count = 0_u64;
+//!         for err in recv_errs.iter() {
+//!             eprintln!("ERROR: {}", err);
+//!             count += 1;
+//!         }
+//!         count
+//!     });
 //!
 //!     // We spawn a single thread to "walk" the directory for paths.
 //!     let errs = send_errs.clone();
@@ -182,7 +202,6 @@
 //!         });
 //!     }
 //!     drop(send_lines);
-//!     drop(send_errs);
 //!
 //!     // Now we do actual "CPU work" using the rayon thread pool
 //!     let (send_count, recv_count) = ch::bounded(128);
@@ -200,10 +219,15 @@
 //!         take!(=send_count);
 //!         ch!(send_count <- count_examples(line));
 //!     });
-//!     drop(send_count);
 //!
 //!     // Finally we can get our count.
-//!     assert_eq!(839, counter.finish());
+//!     drop(send_count);
+//!     let count = counter.finish();
+//!     # // assert_eq!(839, count);
+//!
+//!     // And assert we had no errors
+//!     drop(send_errs);
+//!     assert_eq!(0, handle_errs.finish());
 //! }
 //! ```
 //!
