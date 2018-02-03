@@ -1,7 +1,10 @@
 # ergo_sync: making creating and synchronizing threads ergonomic, therefore fun!
 
-This is a library for making synchronization primitives. It is _NOT YET RELEASED_
-and is a work in progress.
+[![Build Status](https://travis-ci.org/vitiral/ergo_sync.svg?branch=windows)](https://travis-ci.org/vitiral/ergo_sync)
+[![Build status](https://ci.appveyor.com/api/projects/status/vgis54solhygre0n?svg=true)](https://ci.appveyor.com/project/vitiral/path-abs)
+[![Docs](https://docs.rs/ergo_sync/badge.svg)](https://docs.rs/ergo_sync)
+
+**See the [library docs](https://docs.rs/ergo_sync) for more information**
 
 
 # LICENSE

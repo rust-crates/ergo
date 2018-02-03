@@ -1,6 +1,16 @@
 [package]
-authors = ["Garrett Berg <googberg@gmail.com>"]
+authors = ["Garrett Berg <vitiral@gmail.com>"]
+description = "Methods and types for making working with the filesystem ergonomic, therefore fun."
+documentation = "https://docs.rs/ergo_sync"
+keywords = [
+    "thread",
+    "channel",
+    "sync",
+]
+license = "MIT OR Apache-2.0"
 name = "ergo_sync"
+readme = "README.md"
+repository = "https://github.com/rust-crates/ergo_sync"
 version = "0.1.0"
 
 [dependencies]

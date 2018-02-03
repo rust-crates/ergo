@@ -260,8 +260,6 @@
 //!     assert_eq!(0, handle_errs.finish());
 //! }
 //! ```
-#![feature(trace_macros)]
-
 #[allow(unused_imports)]
 #[macro_use(take)]
 extern crate taken;
