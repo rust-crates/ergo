@@ -1,12 +1,25 @@
-//! Module for working with scoped threads. This is just [`crossbeam_utils::scoped`] rexported.
+//! `ergo_sync` provides scoped threads through `rayon` which are _not_
+//! guaranteed to run in parallel.
 //!
-//! [`crossbeam_utils::scoped`]: ../crossbeam_utils/scoped/index.html
+//! However, the crate [`crossbeam_utils`] has excellent scoped threads
+//! if you should need them. The API for crossbeam's scoped-threads and
+//! rayon's is almost identical except with rayon you must make sure
+//! to _not_ put both your producers and consumers in the rayon thread pool.
+//!
+//! Note that scoped threads are only useful if:
+//!
+//! - Your threads need to take references to anything that can't simply be moved.
+//! - Your threads are extremely performance sensitive.
+//!
+//! [`crossbeam_utils`]: https://github.com/crossbeam-rs/crossbeam-utils
 //!
 //! # Examples
 //! ## Example: producers and consumers
 //!
 //! ```rust
 //! #[macro_use] extern crate ergo_sync;
+//! extern crate crossbeam_utils;
+//! use crossbeam_utils::scoped;
 //! use ergo_sync::*;
 //!
 //! # fn main() {
@@ -52,7 +65,7 @@
 //!         ch!(send <- expensive_fn(val));
 //!     });
 //!
-//!     consumer.finish()
+//!     consumer.join()
 //! });
 //!
 //! assert_eq!(24_094_896, result);
@@ -74,7 +87,9 @@
 //!
 //! ```
 //! #[macro_use] extern crate ergo_sync;
+//! extern crate crossbeam_utils;
 //! use ergo_sync::*;
+//! use crossbeam_utils::scoped;
 //!
 //! # fn main() {
 //! scoped::scope(|sc| {
@@ -107,17 +122,3 @@
 //! })
 //! # }
 //! ```
-
-pub use crossbeam_utils::scoped::*;
-
-impl<T: Send + 'static> super::FinishHandle<T> for ScopedJoinHandle<T> {
-    /// The scoped threads already panic when poisoned, so this is equivalent to
-    /// `ScopedJoinHandle::join`
-    ///
-    /// > this behavior is not well documented. See [this issue].
-    ///
-    /// [this issue]: https://github.com/crossbeam-rs/crossbeam-utils/issues/6
-    fn finish(self) -> T {
-        self.join()
-    }
-}

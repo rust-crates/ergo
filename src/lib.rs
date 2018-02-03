@@ -1,6 +1,6 @@
-//! make creating and synchronizing threads ergonomic, therefore fun!
+//! **make creating and synchronizing threads ergonomic, therefore fun!**
 //!
-//! This is the synchronization library as part of the `ergo` crates ecosystem. It contains useful
+//! This is the synchronization library as part of the [`ergo`] crates ecosystem. It contains useful
 //! types, traits and functions for spawning threads and synchronizing them. It is named `sync`
 //! because of `std::sync` and because it is _not_ async, which is/will be a spearate part of the
 //! ergo ecocystem.
@@ -13,6 +13,8 @@
 //! - [`taken`](https://github.com/vitiral/taken): macros for taking ownership
 //!
 //! Consider supporting their development individually and starring them on github.
+//!
+//! - [`ergo`]: https://github.com/rust-crates/ergo
 //!
 //! # How to Use
 //!
@@ -58,6 +60,144 @@
 //! ## Example: Channels
 //! See the docs for the [`ch` module].
 //!
+//! ## Example: producer / consumer
+//!
+//! The producer/consumer model is this library's bread and butter. Once you understand
+//! channels you should next learn producer/consumer.
+//!
+//! In the ergo_sync model you should:
+//!
+//! - Do "CPU work" using the rayon threadpool. This means using either the `pool_scope` function
+//!   or the rayon parallel iterators (or both!)
+//! - Do "IO work" using system threads. A typically good number is `min(8, num_cpus())` since
+//!   8 is a typicaly a high bar for the number of channels on an SSD or other storage device.
+//!
+//! A typical application might look like this:
+//!
+//! ```no_compile
+//!  +-----------------------+
+//!  | Feed Paths to Parse   |
+//!  | (typically one thread |
+//!  | using walkdir which   |
+//!  | is rediculously fast) |
+//!  +-----------------------+
+//!         ___|___
+//!        /   |   \
+//!       v    v    v
+//!  +------------------------+
+//!  | 8 or more threads      |
+//!  | receiving paths via    |
+//!  | channels and reading   |
+//!  | raw strings.           |
+//!  |                        |
+//!  | These are sent via     |
+//!  | channel the next stage |
+//!  +------------------------+
+//!         ___|___
+//!        /   |   \
+//!       v    v    v
+//!  +------------------------+
+//!  | A rayon par_iter       |
+//!  | reading the string     |
+//!  | iterators and          |
+//!  | processing them.       |
+//!  |                        |
+//!  | This is pure cpu work. |
+//!  +------------------------+
+//!            |
+//!            |
+//!            v
+//!  +------------------------+
+//!  | Results are collected  |
+//!  | to prepare for next    |
+//!  | step                   |
+//!  +------------------------+
+//! ```
+//!
+//! This example basically implements the above example using the source code
+//! of this crate as the example. The below code searches through the crate
+//! source looking for every use of the word "example".
+//!
+//! ```rust
+//! #[macro_use] extern crate ergo_sync;
+//! use ergo_sync::*;
+//! use std::fs;
+//! use std::io;
+//! use std::io::prelude::*;
+//! use std::path::PathBuf;
+//!
+//! /// List the dir and return any paths found
+//! fn read_paths(dir: &str, send_paths: &Sender<PathBuf>, errs: &Sender<io::Error>) {
+//!     for entry in ch_try!(fs::read_dir(dir), errs, return) {
+//!         let e = ch_try!(entry, errs, continue);
+//!         // let e = match entry {
+//!         //     Ok(v) => v,
+//!         //     Err(e) => {
+//!         //         ch!(errs <- e);
+//!         //         continue;
+//!         //     }
+//!         // };
+//!         let meta = ch_try!(e.metadata(), errs, continue);
+//!         if meta.is_file() {
+//!             ch!(send_paths <- e.path());
+//!         }
+//!     }
+//! }
+//!
+//! /// Send one line at a time from the file
+//! fn read_lines(path: PathBuf, send_lines: &Sender<String>, errs: &Sender<io::Error>) {
+//!     let file = ch_try!(fs::File::open(path), errs, return);
+//!     let buf = io::BufReader::new(file);
+//!     for line in buf.lines() {
+//!         // send the line but return immediately if any `io::Error` is hit
+//!         ch!(send_lines <- ch_try!(line, errs, return));
+//!     }
+//! }
+//!
+//! /// Parse each line for "example", counting the number of times it appears.
+//! fn count_examples(line: &str) -> u64 {
+//!     line.match_indices("example").count() as u64
+//! }
+//!
+//! fn main() {
+//!     let (send_errs, recv_errs) = ch::unbounded();
+//!     let (send_paths, recv_paths) = ch::bounded(128);
+//!
+//!     // We spawn a single thread to "walk" the directory for paths.
+//!     let errs = send_errs.clone();
+//!     spawn(|| {
+//!         take!(send_paths, errs);
+//!         read_paths("src", &send_paths, &errs);
+//!     });
+//!
+//!     // We read the lines using 8 threads (since this an IO bound)
+//!     let (send_lines, recv_lines) = ch::bounded(128);
+//!     for _ in 0..8 {
+//!         take!(=recv_paths, =send_lines, =send_errs);
+//!         spawn(|| {
+//!             take!(recv_paths, send_lines, send_errs as errs);
+//!             for path in recv_paths {
+//!                 read_lines(path, &send_lines, &errs);
+//!             }
+//!         });
+//!     }
+//!     drop(send_lines);
+//!     drop(send_errs);
+//!
+//!     // Now we do actual "CPU work" using the rayon thread pool
+//!     let (send_count, recv_count) = ch::bounded(128);
+//!     // FIXME: how do I actually do this???
+//!     let received: Vec<_> = recv_lines.iter().collect();
+//!     received.par_iter().for_each(|line| {
+//!         take!(=send_count);
+//!         ch!(send_count <- count_examples(line));
+//!     });
+//!     drop(send_count);
+//!
+//!     // Finally we can get our count.
+//!     assert_eq!(42, recv_count.iter().count());
+//! }
+//! ```
 //!
 //! ## Example: Scoped Threads
 //! See the docs for the [`scoped` module].
@@ -84,13 +224,14 @@
 //!
 //! [`rayon::ThreadPool`]: ../rayon/struct.ThreadPool.html
 
+#![feature(trace_macros)]
+
 #[allow(unused_imports)]
 #[macro_use(take)]
 extern crate taken;
 #[allow(unused_imports)]
 #[macro_use(select_loop)]
 pub extern crate crossbeam_channel;
-pub extern crate crossbeam_utils;
 pub extern crate rayon;
 pub extern crate std_prelude;
 
@@ -323,6 +464,66 @@ macro_rules! ch {
         match $recv.recv() {
             Ok(v) => panic!("Got {:?} when expecting senders to be closed.", v),
             Err(err) => (),
+        }
+    };
+}
+
+/// Same as the `try!` macro, except if the expression fails than the `Err` is sent on the
+/// `$send` channel and the requested action is performed.
+///
+/// Suggested possible actions:
+/// - `continue`
+/// - `return`
+/// - `break`
+///
+/// # Examples
+///
+/// ```rust
+/// #[macro_use] extern crate ergo_sync;
+/// use ergo_sync::*;
+/// # fn main() {
+/// let (send_err, recv_err) = ch::unbounded();
+/// let items = &[Ok("this is alright"), Err("not ok"), Err("still not okay")];
+/// # let mut okay = 0;
+/// for item in items.iter() {
+///     let v = ch_try!(*item, send_err, continue);
+///     println!("got: {}", v);
+///     # okay += 1;
+/// }
+///
+/// drop(send_err);
+/// let errs: Vec<_> = recv_err.iter().collect();
+/// assert_eq!(vec!["not ok", "still not okay"], errs);
+/// # assert_eq!(1, okay);
+/// # }
+/// ```
+#[macro_export]
+macro_rules! ch_try {
+    [$expr:expr, $send:ident, continue] => {
+        match $expr {
+            Ok(v) => v,
+            Err(e) => {
+                ch!($send <- e);
+                continue;
+            }
+        }
+    };
+    [$expr:expr, $send:ident, return] => {
+        match $expr {
+            Ok(v) => v,
+            Err(e) => {
+                ch!($send <- e);
+                return;
+            }
+        }
+    };
+    [$expr:expr, $send:ident, return $expr:expr] => {
+        match $expr {
+            Ok(v) => v,
+            Err(e) => {
+                ch!($send <- e);
+                return $expr;
+            }
         }
     };
 }
