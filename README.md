@@ -49,18 +49,18 @@ The `ergo` crate itself is not currently usable.
 
 ### Implemented Sub Crates
 - [x] [**ergo_fs**](https://github.com/vitiral/ergo_fs): ergonomic filesystem
-  operations. (*usable but alpha status*)
+  operations. (*beta status*)
+- [x] [**ergo_sync**](https://github.com/rust-crates/ergo_sync): provides an
+  ultra-simple API for using `Sync` types, i.e.  running threads and sending
+  messages. (*beta statu*)
 
 ### Near Term Sub Crates
 The following sub crates are targeted towards the following months:
 
 - [ ] **ergo_std**: "generally needed stuff" -- `regex`, `lazy_static`,
-  `maplit`, `failure`, `itertools`, `serde`, `ordermap`. This will be _very few
+  `maplit`, `itertools`, `ordermap`. This will be _very few
   crates_. It is mostly composed of things which could practically be in the
   std library.
-- [ ] **ergo_sync**: provides an ultra-simple API for using `Sync` types, i.e.
-  running threads. Includes `rayon`, `chan`, etc.
-  ([pre alpha repo](https://github.com/rust-crates/ergo_sync))
 - [ ] **ergo_config** deserialization and config files and ENV variables:
   `toml`, `serde_json`, `serde_yaml`, `configure`
 - [ ] **ergo_sys**: deal with interfacing with the OS. Examples currently only
