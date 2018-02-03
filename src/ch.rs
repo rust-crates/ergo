@@ -117,21 +117,34 @@
 //! executing, `_done` is dropped, the channel is closed and `rdone.recv()`
 //! unblocks returning an error, which we expect with `ch!(! <- rdone)`.
 //!
-//! ## Example: non-blocking sends/receives using `try_send`
+//! ## Example: non-blocking sends/receives
 //!
 //! ```
 //! #[macro_use] extern crate ergo_sync;
 //! use ergo_sync::*;
 //!
 //! # fn main() {
-//! let (send, _recv) = ch::bounded(0);
+//! let (send, recv) = ch::bounded(1);
 //! let data = "send data".to_string();
-//! match send.try_send(data) {
-//!     Ok(()) => panic!("unexpected"),
-//!     Err(ch::TrySendError
+//! match ch!(send <-? data) {
+//!     Some(data) => {
+//!         println!("didn't send data, but got it back: {}", data);
+//!         unreachable!(); // in this case we don't expect it
+//!     }
+//!     None => println!("message sent successfully"),
+//! }
 //!
-//!     println!("Send failed, still own data: {}", data);
-//! } else {
+//! // attempting to send additional data fails
+//! let data = "more data".to_string();
+//! assert_eq!(Some(data.clone()), ch!(send <-? data));
+//!
+//! match ch!(<-? recv) {
+//!     Some(data) => println!("received data: {}", data),
+//!     None => {
+//!         println!("didn't receive any data yet");
+//!         unreachable!(); // in this case we don't expect it
+//!     }
+//! }
 //! # }
 //! ```
 //!
