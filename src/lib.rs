@@ -186,7 +186,15 @@
 //!
 //!     // Now we do actual "CPU work" using the rayon thread pool
 //!     let (send_count, recv_count) = ch::bounded(128);
-//!     // FIXME: how do I actually do this???
+//!
+//!     // We set up the receiver before kicking off rayon since
+//!     // rayon blocks until it is done.
+//!     let counter = spawn(|| {
+//!         take!(recv_count);
+//!         recv_count.iter().count()
+//!     });
+//!
+//!     // FIXME: how do I actually do this....???
 //!     let received: Vec<_> = recv_lines.iter().collect();
 //!     received.par_iter().for_each(|line| {
 //!         take!(=send_count);
@@ -195,7 +203,7 @@
 //!     drop(send_count);
 //!
 //!     // Finally we can get our count.
-//!     assert_eq!(42, recv_count.iter().count());
+//!     assert_eq!(839, counter.finish());
 //! }
 //! ```
 //!
