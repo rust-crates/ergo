@@ -176,3 +176,206 @@
 pub use crossbeam_channel::{bounded, unbounded, IntoIter, Iter, Receiver, RecvError,
                             RecvTimeoutError, Select, SelectRecvError, SelectSendError, SendError,
                             SendTimeoutError, Sender, TryIter, TryRecvError, TrySendError};
+
+/// Use with channels with ergonomic syntax and panic with helpful error messages when
+/// sending/receiving on a channel is invalid.
+///
+///   - `ch!(send <- 42)` for sending a value.
+///   - `let v = ch!(<- recv)` for receiving a value.
+///   - `ch!(! <- recv)` to wait for channels to close.
+///   - `<-?` for async operation support.
+///
+/// **Blocking syntax:**
+///
+/// - `ch!(send <- value)`: blocks until a value is sent, panics if all receivers are dropped.
+/// - `ch!(<- recv)`: blocks until a value is received, panics if all senders are dropped.
+/// - `ch!(! <- recv)`: blocks until all senders are dropped, panics if a value is received. Used
+///   for signaling.
+///
+/// > This syntax works with both `crossbeam-channel` channels (which are exported by this crate) as
+/// > well as `std::mspc` channels.
+///
+/// > Note that these operations can deadlock if a channel is leaked.
+///
+/// **Non-Blocking syntax:**
+///
+/// - `ch!(send <-? value)`: returns `None` if the value was sent, `Some(value)` if the value
+///   was not sent. Panics if all receivers are dropped.
+/// - `ch!(<-? recv)`: returns `None` if no value is received, `Some(value)` if a value is
+///   received. Panics if all senders are dropped.
+/// - `ch!(! <-? recv)`: returns `true` if there are still senders and `false` if the seners have
+///   been dropped. Panics if a value is received. Use with `while ch!(! <-? recv) { /* ... */ }`
+///
+/// > Non-Blocking syntax does _not_ work with `std::mspc` channels.
+///
+/// # Examples
+///
+/// ## Example: Using `ergo::chan` channels
+///
+/// ```rust
+/// #[macro_use] extern crate ergo_sync;
+/// use ergo_sync::*;
+/// # fn main() {
+/// let (send, recv) = ch::bounded(3);
+/// ch!(send <- 4);
+/// ch!(send <- 7);
+/// ch!(send <- 42);
+/// assert_eq!(4, ch!(<- recv));
+/// assert_eq!(7, ch!(<- recv));
+/// let v = ch!(<- recv);
+/// assert_eq!(42, v);
+///
+/// drop(send);
+/// // ch!(<- recv); // panics
+/// ch!(! <- recv);  // succeeds
+/// # }
+/// ```
+///
+/// ## Example: Using `std::mspc` channels
+///
+/// ```rust
+/// #[macro_use] extern crate ergo_sync;
+/// use std::sync::mpsc::sync_channel;
+///
+/// # fn main() {
+/// let (send, recv) = sync_channel(3);
+/// ch!(send <- 4);
+/// ch!(send <- 7);
+/// ch!(send <- 42);
+/// assert_eq!(4, ch!(<- recv));
+/// assert_eq!(7, ch!(<- recv));
+/// let v = ch!(<- recv);
+/// assert_eq!(42, v);
+///
+/// drop(send);
+/// // ch!(<- recv); // panics
+/// ch!(! <- recv);  // succeeds
+/// # }
+/// ```
+///
+/// ## Example: using non-blocking syntax
+///
+/// ```rust
+/// #[macro_use] extern crate ergo_sync;
+/// use ergo_sync::*;
+/// # fn main() {
+/// let (send, recv) = ch::bounded(3);
+/// assert_eq!(None, ch!(<-? recv)); // no values sent yet
+///
+/// assert!(ch!(send <-? 4).is_none());
+/// assert_eq!(Some(4), ch!(<-? recv));
+/// assert_eq!(None, ch!(<-? recv));
+///
+/// assert!(ch!(send <-? 7).is_none());
+/// assert!(ch!(send <-? 42).is_none());
+/// assert!(ch!(send <-? 1).is_none());
+/// // further attempts return the value
+/// assert_eq!(Some(100), ch!(send <-? 100));
+///
+/// assert_eq!(Some(7), ch!(<-? recv));
+///
+/// assert_eq!(Some(42), ch!(<-? recv));
+/// assert_eq!(Some(1), ch!(<-? recv));
+/// assert_eq!(None, ch!(<-? recv));
+/// assert!(ch!(! <-? recv)); // senders still exist
+///
+/// drop(send);
+/// // ch!(<-? recv); // panics
+/// ch!(! <-? recv);  // succeeds
+/// # }
+/// ```
+#[macro_export]
+macro_rules! ch {
+    [$send:ident <-? $value:expr] => {
+        match $send.try_send($value) {
+            Ok(()) => None,
+            Err(ch::TrySendError::Full(v)) => Some(v),
+            Err(ch::TrySendError::Disconnected(_)) => {
+                panic!("Attempted to send a value but receivers are disconnected");
+            }
+        }
+    };
+
+    [$send:ident <- $value:expr] => {
+        match $send.send($value) {
+            Ok(_) => {},
+            Err(err) => panic!("{} for `send`.", err),
+        }
+    };
+
+    [<-? $recv:ident] => {
+        match $recv.try_recv() {
+            Ok(v) => Some(v),
+            Err(ch::TryRecvError::Empty) => None,
+            Err(ch::TryRecvError::Disconnected) => {
+                panic!("Attempted to recv a value but senders are disconnected");
+            }
+        }
+    };
+    [<- $recv:ident] => {
+        match $recv.recv() {
+            Ok(v) => v,
+            Err(err) => panic!("{} for `recv`.", err),
+        }
+    };
+
+
+    [! <-? $recv:ident] => {
+        match $recv.try_recv() {
+            Ok(v) => panic!("Got {:?} when expecting senders to be closed.", v),
+            Err(ch::TryRecvError::Empty) => true,  // senders still exist
+            Err(ch::TryRecvError::Disconnected) => false, // no more senders
+        }
+    };
+    [! <- $recv:ident] => {
+        match $recv.recv() {
+            Ok(v) => panic!("Got {:?} when expecting senders to be closed.", v),
+            Err(err) => (),
+        }
+    };
+}
+
+/// Handle an expression that could be `Err` and send it over a channel if it is.
+///
+/// This is the same as the builtin `try!` macro, except if the expression fails than the `Err` is
+/// sent on the `$send` channel and the requested action is performed.
+///
+/// Suggested possible actions:
+/// - `continue`
+/// - `return`
+/// - `break`
+/// - some expression that evaluates to a "default value" for that context.
+///
+/// # Examples
+///
+/// ```rust
+/// #[macro_use] extern crate ergo_sync;
+/// use ergo_sync::*;
+/// # fn main() {
+/// let (send_err, recv_err) = ch::unbounded();
+/// let items = &[Ok("this is alright"), Err("not ok"), Err("still not okay")];
+/// # let mut okay = 0;
+/// for item in items.iter() {
+///     let v = ch_try!(send_err, *item, continue);
+///     println!("got: {}", v);
+///     # okay += 1;
+/// }
+///
+/// drop(send_err);
+/// let errs: Vec<_> = recv_err.iter().collect();
+/// assert_eq!(vec!["not ok", "still not okay"], errs);
+/// # assert_eq!(1, okay);
+/// # }
+/// ```
+#[macro_export]
+macro_rules! ch_try {
+    [$send:ident, $expr:expr, $action:expr] => {
+        match $expr {
+            Ok(v) => v,
+            Err(e) => {
+                ch!($send <- e);
+                $action
+            }
+        }
+    };
+}

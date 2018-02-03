@@ -2,7 +2,7 @@
 //!
 //! This is the synchronization library as part of the [`ergo`] crates ecosystem. It contains useful
 //! types, traits and functions for spawning threads and synchronizing them. It is named `sync`
-//! because of `std::sync` and because it is _not_ async, which is/will be a spearate part of the
+//! because of `std::sync` and because it is _not_ async, which is/will be a separate part of the
 //! ergo ecocystem.
 //!
 //! The crates that are wraped/exported are:
@@ -14,7 +14,7 @@
 //!
 //! Consider supporting their development individually and starring them on github.
 //!
-//! - [`ergo`]: https://github.com/rust-crates/ergo
+//! [`ergo`]: https://github.com/rust-crates/ergo
 //!
 //! # How to Use
 //!
@@ -40,19 +40,26 @@
 //!
 //! In addition it provides the following helper macros:
 //!
+//! - **[`ch!`]**:Use with channels with ergonomic syntax and panic with helpful error messages
+//!   when sending/receiving on a channel is invalid.
+//!   - `ch!(send <- 42)` for sending a value.
+//!   - `let v = ch!(<- recv)` for receiving a value.
+//!   - `ch!(! <- recv)` to wait for channels to close.
+//!   - `<-?` for async operation support.
+//! - **[`ch_try!`]**: to handle an expression that could be `Err` and send it over a channel if it
+//!   is.
+//! - **[`select_loop!`]**: for selecting from multiple channels.
 //! - **[`take!`]**: for expressing ownership consisely. You will move or clone
 //!   variables extremely often in threads, this helps you express that better than
-//!   `let v = v.clone()`.
-//! - **[`ch!`]**: deal with channels with golang-like syntax and panic with helpful error messages
-//!   on when sending/receiving on a channel is invalid.
-//! - **[`select_loop!`]**: for selecting from multiple channels.
+//!   `let value = value`.
 //!
 //! [`ch` module]: ch/index.html
-//! [`scoped` module]: scoped/index.html
 //! [`spawn`]: fn.spawn.html
 //! [`rayon` prelude]: ../rayon/index.html
+//! [`rayon::scope`]: file:///home/garrett/src/ruststuff/ergo_sync/target/doc/rayon/fn.scope.html
 //! [`take!`]: macro.take.html
 //! [`ch!`]: macro.ch.html
+//! [`ch_try!`]: macro.ch_try.html
 //! [`select_loop!`]: macro.select_loop.html
 //!
 //! # Examples
@@ -65,14 +72,16 @@
 //! The producer/consumer model is this library's bread and butter. Once you understand
 //! channels you should next learn producer/consumer.
 //!
-//! In the ergo_sync model you should:
+//! In the `ergo_sync` model you should:
 //!
-//! - Do "CPU work" using the rayon threadpool. This means using either the `pool_scope` function
-//!   or the rayon parallel iterators (or both!)
+//! - Do "CPU work" using the rayon threadpool. This typically means using the rayon parallel
+//!   iterators, but you can also use `rayon::scope`
+//!
 //! - Do "IO work" using system threads. A typically good number is `min(8, num_cpus())` since
 //!   8 is a typicaly a high bar for the number of channels on an SSD or other storage device.
 //!
 //! A typical application might look like this:
+//!
 //!
 //! ```no_compile
 //!  +-----------------------+
@@ -138,9 +147,9 @@
 //!     dir: P, send_paths: &Sender<PathBuf>,
 //!     errs: &Sender<io::Error>,
 //! ) {
-//!     for entry in ch_try!(fs::read_dir(dir), errs, return) {
-//!         let entry = ch_try!(entry, errs, continue);
-//!         let meta = ch_try!(entry.metadata(), errs, continue);
+//!     for entry in ch_try!(errs, fs::read_dir(dir), return) {
+//!         let entry = ch_try!(errs, entry, continue);
+//!         let meta = ch_try!(errs, entry.metadata(), continue);
 //!         if meta.is_file() {
 //!             ch!(send_paths <- entry.path());
 //!         } else if meta.is_dir() {
@@ -154,11 +163,11 @@
 //!
 //! /// Send one line at a time from the file
 //! fn read_lines(path: PathBuf, send_lines: &Sender<String>, errs: &Sender<io::Error>) {
-//!     let file = ch_try!(fs::File::open(path), errs, return);
+//!     let file = ch_try!(errs, fs::File::open(path), return);
 //!     let buf = io::BufReader::new(file);
 //!     for line in buf.lines() {
 //!         // send the line but return immediately if any `io::Error` is hit
-//!         ch!(send_lines <- ch_try!(line, errs, return));
+//!         ch!(send_lines <- ch_try!(errs, line, return));
 //!     }
 //! }
 //!
@@ -234,6 +243,7 @@
 //! ## Example: Scoped Threads
 //! See the docs for the [`scoped` module].
 //!
+//! [`scoped` module]: scoped/index.html
 //!
 //! # Additional Types
 //! The types and modules exported by default represent the most ones used. However, the sub-crates
@@ -244,15 +254,13 @@
 //!
 //! ## Creating and Using Thread Pools
 //!
-//! **[`rayon::ThreadPool`]** can be used create a rayon thread pool with an explicit number of
-//! threads. This can also create scoped threads. Note that the thread pool controls the number
-//! of threads executed for _all_ rayon functions, so while externally they are not ergonomic
-//! (you have to do quite a bit of work to set them up) any function internally will just
-//! "do what you expect" and use the threads you have initialized.
+//! In most cases, you can just use [`rayon::scope`] to get direct access to the rayon thread pool.
 //!
-//! `ThreadPool` is not exported explicitly as the usecases are rare, but definitely do exist. This
-//! is especially useful if you want to do (for example) IO work on a list of files. You know you
-//! want more threads than are nessary for pure "work" but still want to limit them.
+//! In addition, **[`rayon::ThreadPool`]** can be used create a rayon thread pool with an
+//! _explicit_ number of threads. This can also create scoped threads. Note that the thread pool
+//! controls the number of threads executed for _all_ rayon functions, so while externally they are
+//! not ergonomic (you have to do quite a bit of work to set them up) any function internally will
+//! just "do what you expect" and use the threads you have initialized.
 //!
 //! [`rayon::ThreadPool`]: ../rayon/struct.ThreadPool.html
 
@@ -346,216 +354,3 @@ pub fn sleep_ms(millis: u64) {
     sleep(Duration::from_millis(millis))
 }
 
-/// Send or Receive on channels ergonomically.
-///
-/// This macro provides common syntax for using channels.
-///
-/// Blocking syntax:
-///
-/// - `ch!(send <- value)`: blocks until a value is sent, panics if all receivers are dropped.
-/// - `ch!(<- recv)`: blocks until a value is received, panics if all senders are dropped.
-/// - `ch!(! <- recv)`: blocks until all senders are dropped, panics if a value is received. Used
-///   for signaling.
-///
-/// > This syntax works with both `crossbeam-channel` channels (which are exported by this crate) as
-/// > well as `std::mspc` channels.
-///
-/// > Note that these operations can deadlock if a channel is leaked.
-///
-/// Non-Blocking syntax:
-///
-/// - `ch!(send <-? value)`: returns `None` if the value was sent, `Some(value)` if the value
-///   was not sent. Panics if all receivers are dropped.
-/// - `ch!(<-? recv)`: returns `None` if no value is received, `Some(value)` if a value is
-///   received. Panics if all senders are dropped.
-/// - `ch!(! <-? recv)`: returns `true` if there are still senders and `false` if the seners have
-///   been dropped. Panics if a value is received. Use with `while ch!(! <-? recv) { /* ... */ }`
-///
-/// > This syntax does _not_ work with `std::mspc` channels.
-///
-/// # Examples
-///
-/// ## Example: Using `ergo::chan` channels
-///
-/// ```rust
-/// #[macro_use] extern crate ergo_sync;
-/// use ergo_sync::*;
-/// # fn main() {
-/// let (send, recv) = ch::bounded(3);
-/// ch!(send <- 4);
-/// ch!(send <- 7);
-/// ch!(send <- 42);
-/// assert_eq!(4, ch!(<- recv));
-/// assert_eq!(7, ch!(<- recv));
-/// let v = ch!(<- recv);
-/// assert_eq!(42, v);
-///
-/// drop(send);
-/// // ch!(<- recv); // panics
-/// ch!(! <- recv);  // succeeds
-/// # }
-/// ```
-///
-/// ## Example: Using `std::mspc` channels
-///
-/// ```rust
-/// #[macro_use] extern crate ergo_sync;
-/// use std::sync::mpsc::sync_channel;
-///
-/// # fn main() {
-/// let (send, recv) = sync_channel(3);
-/// ch!(send <- 4);
-/// ch!(send <- 7);
-/// ch!(send <- 42);
-/// assert_eq!(4, ch!(<- recv));
-/// assert_eq!(7, ch!(<- recv));
-/// let v = ch!(<- recv);
-/// assert_eq!(42, v);
-///
-/// drop(send);
-/// // ch!(<- recv); // panics
-/// ch!(! <- recv);  // succeeds
-/// # }
-/// ```
-///
-/// ## Example: using non-blocking syntax
-///
-/// ```rust
-/// #[macro_use] extern crate ergo_sync;
-/// use ergo_sync::*;
-/// # fn main() {
-/// let (send, recv) = ch::bounded(3);
-/// assert_eq!(None, ch!(<-? recv)); // no values sent yet
-///
-/// assert!(ch!(send <-? 4).is_none());
-/// assert_eq!(Some(4), ch!(<-? recv));
-/// assert_eq!(None, ch!(<-? recv));
-///
-/// assert!(ch!(send <-? 7).is_none());
-/// assert!(ch!(send <-? 42).is_none());
-/// assert!(ch!(send <-? 1).is_none());
-/// // further attempts return the value
-/// assert_eq!(Some(100), ch!(send <-? 100));
-///
-/// assert_eq!(Some(7), ch!(<-? recv));
-///
-/// assert_eq!(Some(42), ch!(<-? recv));
-/// assert_eq!(Some(1), ch!(<-? recv));
-/// assert_eq!(None, ch!(<-? recv));
-/// assert!(ch!(! <-? recv)); // senders still exist
-///
-/// drop(send);
-/// // ch!(<-? recv); // panics
-/// ch!(! <-? recv);  // succeeds
-/// # }
-/// ```
-#[macro_export]
-macro_rules! ch {
-    [$send:ident <-? $value:expr] => {
-        match $send.try_send($value) {
-            Ok(()) => None,
-            Err(ch::TrySendError::Full(v)) => Some(v),
-            Err(ch::TrySendError::Disconnected(_)) => {
-                panic!("Attempted to send a value but receivers are disconnected");
-            }
-        }
-    };
-
-    [$send:ident <- $value:expr] => {
-        match $send.send($value) {
-            Ok(_) => {},
-            Err(err) => panic!("{} for `send`.", err),
-        }
-    };
-
-    [<-? $recv:ident] => {
-        match $recv.try_recv() {
-            Ok(v) => Some(v),
-            Err(ch::TryRecvError::Empty) => None,
-            Err(ch::TryRecvError::Disconnected) => {
-                panic!("Attempted to recv a value but senders are disconnected");
-            }
-        }
-    };
-    [<- $recv:ident] => {
-        match $recv.recv() {
-            Ok(v) => v,
-            Err(err) => panic!("{} for `recv`.", err),
-        }
-    };
-
-
-    [! <-? $recv:ident] => {
-        match $recv.try_recv() {
-            Ok(v) => panic!("Got {:?} when expecting senders to be closed.", v),
-            Err(ch::TryRecvError::Empty) => true,  // senders still exist
-            Err(ch::TryRecvError::Disconnected) => false, // no more senders
-        }
-    };
-    [! <- $recv:ident] => {
-        match $recv.recv() {
-            Ok(v) => panic!("Got {:?} when expecting senders to be closed.", v),
-            Err(err) => (),
-        }
-    };
-}
-
-/// Same as the `try!` macro, except if the expression fails than the `Err` is sent on the
-/// `$send` channel and the requested action is performed.
-///
-/// Suggested possible actions:
-/// - `continue`
-/// - `return`
-/// - `break`
-///
-/// # Examples
-///
-/// ```rust
-/// #[macro_use] extern crate ergo_sync;
-/// use ergo_sync::*;
-/// # fn main() {
-/// let (send_err, recv_err) = ch::unbounded();
-/// let items = &[Ok("this is alright"), Err("not ok"), Err("still not okay")];
-/// # let mut okay = 0;
-/// for item in items.iter() {
-///     let v = ch_try!(*item, send_err, continue);
-///     println!("got: {}", v);
-///     # okay += 1;
-/// }
-///
-/// drop(send_err);
-/// let errs: Vec<_> = recv_err.iter().collect();
-/// assert_eq!(vec!["not ok", "still not okay"], errs);
-/// # assert_eq!(1, okay);
-/// # }
-/// ```
-#[macro_export]
-macro_rules! ch_try {
-    [$expr:expr, $send:ident, continue] => {
-        match $expr {
-            Ok(v) => v,
-            Err(e) => {
-                ch!($send <- e);
-                continue;
-            }
-        }
-    };
-    [$expr:expr, $send:ident, return] => {
-        match $expr {
-            Ok(v) => v,
-            Err(e) => {
-                ch!($send <- e);
-                return;
-            }
-        }
-    };
-    [$expr:expr, $send:ident, return $expr:expr] => {
-        match $expr {
-            Ok(v) => v,
-            Err(e) => {
-                ch!($send <- e);
-                return $expr;
-            }
-        }
-    };
-}
