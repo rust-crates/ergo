@@ -203,6 +203,7 @@ pub fn sleep_ms(millis: u64) {
 /// # Examples
 ///
 /// ## Example: Using `ergo::chan` channels
+///
 /// ```rust
 /// #[macro_use] extern crate ergo_sync;
 /// use ergo_sync::*;
@@ -223,9 +224,11 @@ pub fn sleep_ms(millis: u64) {
 /// ```
 ///
 /// ## Example: Using `std::mspc` channels
+///
 /// ```rust
 /// #[macro_use] extern crate ergo_sync;
 /// use std::sync::mpsc::sync_channel;
+///
 /// # fn main() {
 /// let (send, recv) = sync_channel(3);
 /// ch!(send <- 4);
@@ -240,8 +243,10 @@ pub fn sleep_ms(millis: u64) {
 /// // ch!(<- recv); // panics
 /// ch!(! <- recv);  // succeeds
 /// # }
+/// ```
 ///
-/// ## Example: using `try_send` and `try_recv` but panicing if disconnected
+/// ## Example: using non-blocking syntax
+///
 /// ```rust
 /// #[macro_use] extern crate ergo_sync;
 /// use ergo_sync::*;
@@ -249,36 +254,30 @@ pub fn sleep_ms(millis: u64) {
 /// let (send, recv) = ch::bounded(3);
 /// assert_eq!(None, ch!(<-? recv)); // no values sent yet
 ///
-/// assert!(ch!(send <- 4).is_none());
+/// assert!(ch!(send <-? 4).is_none());
 /// assert_eq!(Some(4), ch!(<-? recv));
 /// assert_eq!(None, ch!(<-? recv));
 ///
-/// assert!(ch!(send <- 7).is_none());
-/// assert!(ch!(send <- 42).is_none());
-/// assert!(ch!(send <- 1).is_none());
-/// // further attemps return the value
-/// assert_eq!(Some(100), ch!(send <- 100));
+/// assert!(ch!(send <-? 7).is_none());
+/// assert!(ch!(send <-? 42).is_none());
+/// assert!(ch!(send <-? 1).is_none());
+/// // further attempts return the value
+/// assert_eq!(Some(100), ch!(send <-? 100));
 ///
-/// assert_eq!(7, ch!(<-? recv));
+/// assert_eq!(Some(7), ch!(<-? recv));
 ///
-/// assert_eq!(42, ch!(<-? recv));
+/// assert_eq!(Some(42), ch!(<-? recv));
+/// assert_eq!(Some(1), ch!(<-? recv));
 /// assert_eq!(None, ch!(<-? recv));
 /// assert!(ch!(! <-? recv)); // senders still exist
 ///
 /// drop(send);
-/// // ch!(?<- recv); // panics
-/// ch!(! ?<- recv);  // succeeds
+/// // ch!(<-? recv); // panics
+/// ch!(! <-? recv);  // succeeds
 /// # }
 /// ```
 #[macro_export]
 macro_rules! ch {
-    [$send:ident <- $value:expr] => {
-        match $send.send($value) {
-            Ok(_) => {},
-            Err(err) => panic!("{} for `send`.", err),
-        }
-    };
-
     [$send:ident <-? $value:expr] => {
         match $send.try_send($value) {
             Ok(()) => None,
@@ -289,10 +288,10 @@ macro_rules! ch {
         }
     };
 
-    [<- $recv:ident] => {
-        match $recv.recv() {
-            Ok(v) => v,
-            Err(err) => panic!("{} for `recv`.", err),
+    [$send:ident <- $value:expr] => {
+        match $send.send($value) {
+            Ok(_) => {},
+            Err(err) => panic!("{} for `send`.", err),
         }
     };
 
@@ -305,18 +304,25 @@ macro_rules! ch {
             }
         }
     };
+    [<- $recv:ident] => {
+        match $recv.recv() {
+            Ok(v) => v,
+            Err(err) => panic!("{} for `recv`.", err),
+        }
+    };
 
+
+    [! <-? $recv:ident] => {
+        match $recv.try_recv() {
+            Ok(v) => panic!("Got {:?} when expecting senders to be closed.", v),
+            Err(ch::TryRecvError::Empty) => true,  // senders still exist
+            Err(ch::TryRecvError::Disconnected) => false, // no more senders
+        }
+    };
     [! <- $recv:ident] => {
         match $recv.recv() {
             Ok(v) => panic!("Got {:?} when expecting senders to be closed.", v),
             Err(err) => (),
-        }
-    };
-    [! <-? $recv:ident] => {
-        match $recv.recv() {
-            Ok(v) => panic!("Got {:?} when expecting senders to be closed.", v),
-            Err(ch::TryRecvError::Empty) => true,  // senders still exist
-            Err(ch::TryRecvError::Disconnected) => false, // no more senders
         }
     };
 }
