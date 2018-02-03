@@ -1,5 +1,8 @@
-//! `ergo_sync` provides scoped threads through `rayon` which are _not_
-//! guaranteed to run in parallel.
+// TODO: this doesn't compile and rayon and crossbeam_utils were removed from this library.
+// figure out what to do with these examples.
+
+//! `ergo_sync` does not provide scoped threads. However, you can get access to them
+//! through the libraries [`rayon`] or [`crossbeam_utils`]
 //!
 //! However, the crate [`crossbeam_utils`] has excellent scoped threads
 //! if you should need them. The API for crossbeam's scoped-threads and
@@ -12,6 +15,7 @@
 //! - Your threads are extremely performance sensitive.
 //!
 //! [`crossbeam_utils`]: https://github.com/crossbeam-rs/crossbeam-utils
+//! [`rayon`]: (https://github.com/rayon-rs/rayon): Rayon: A data parallelism library for Rust
 //!
 //! # Examples
 //! ## Example: producers and consumers

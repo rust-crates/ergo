@@ -9,7 +9,6 @@
 //!
 //! - [`crossbeam_channel`](https://github.com/crossbeam-rs/crossbeam-channel):
 //!   Multi-producer multi-consumer channels for message passing
-//! - [`rayon`](https://github.com/rayon-rs/rayon): Rayon: A data parallelism library for Rust
 //! - [`taken`](https://github.com/vitiral/taken): macros for taking ownership
 //!
 //! Consider supporting their development individually and starring them on github.
@@ -29,7 +28,6 @@
 //! It provides the following types and modules for most use cases.
 //!
 //! - **[`ch` module]**: for channel types (also see the [`ch!`] and [`select_loop!`] macros).
-//! - **[`scoped` module]**: for creating scoped threads.
 //! - **[`rayon` prelude]**: for parallizing iterators using a work-stealing threadpool. Use this
 //!   (`par_iter()` method) if you have to parallize a ton of things and you want it to just happen
 //!   as quickly as possible with as few threads as possible.
@@ -132,15 +130,16 @@
 //! > best in class filesystem operations like walking the directory structure and expressing
 //! > the types you expect. We do not use it here so we can focus on `ergo_sync`'s API.
 //!
-//! [`ergo_fs`] https://github.com/rust-crates/ergo_fs
+//! [`ergo_fs`]: https://github.com/rust-crates/ergo_fs
 //!
 //! ```rust
 //! #[macro_use] extern crate ergo_sync;
-//! use ergo_sync::*;
+//!
 //! use std::fs;
 //! use std::io;
 //! use std::io::prelude::*;
 //! use std::path::{Path, PathBuf};
+//! use ergo_sync::*;
 //!
 //! /// List the dir and return any paths found
 //! fn read_paths<P: AsRef<Path>>(
@@ -173,6 +172,7 @@
 //!
 //! /// Parse each line for "example", counting the number of times it appears.
 //! fn count_examples(line: &str) -> u64 {
+//!     // Probably use the `regex` crate in a real life example.
 //!     line.match_indices("example").count() as u64
 //! }
 //!
@@ -199,71 +199,47 @@
 //!         read_paths("src", &send_paths, &errs);
 //!     });
 //!
-//!     // We read the lines using 8 threads (since this an IO bound)
+//!     // We read the lines using 8 threads (since this is IO bound)
 //!     let (send_lines, recv_lines) = ch::bounded(128);
 //!     for _ in 0..8 {
 //!         take!(=recv_paths, =send_lines, =send_errs);
 //!         spawn(|| {
-//!             take!(recv_paths, send_lines, send_errs as errs);
+//!             take!(recv_paths, send_lines, send_errs);
 //!             for path in recv_paths {
-//!                 read_lines(path, &send_lines, &errs);
+//!                 read_lines(path, &send_lines, &send_errs);
 //!             }
 //!         });
 //!     }
+//!     // It's always good to drop your sender when you don't need
+//!     // it to prevent deadlock.
 //!     drop(send_lines);
 //!
 //!     // Now we do actual "CPU work" using the rayon thread pool
 //!     let (send_count, recv_count) = ch::bounded(128);
 //!
-//!     // We set up the receiver before kicking off rayon since
-//!     // rayon blocks until it is done.
-//!     let counter = spawn(|| {
-//!         take!(recv_count);
-//!         recv_count.iter().count()
-//!     });
-//!
-//!     // FIXME: how do I actually do this....???
-//!     let received: Vec<_> = recv_lines.iter().collect();
-//!     received.par_iter().for_each(|line| {
-//!         take!(=send_count);
-//!         ch!(send_count <- count_examples(line));
-//!     });
+//!     // Create a pool of threads for actually doing the "work"
+//!     for _ in 0..num_cpus::get() {
+//!         take!(=recv_lines, =send_count);
+//!         spawn(move || {
+//!             for line in recv_lines.iter() {
+//!                 let count = count_examples(&line);
+//!                 if count != 0 {
+//!                     ch!(send_count <- count);
+//!                 }
+//!             }
+//!         });
+//!     }
+//!     drop(send_count);
+//!     drop(send_errs);
 //!
 //!     // Finally we can get our count.
-//!     drop(send_count);
-//!     let count = counter.finish();
+//!     let count: u64 = recv_count.iter().sum();
 //!     # // assert_eq!(839, count);
 //!
 //!     // And assert we had no errors
-//!     drop(send_errs);
 //!     assert_eq!(0, handle_errs.finish());
 //! }
 //! ```
-//!
-//! ## Example: Scoped Threads
-//! See the docs for the [`scoped` module].
-//!
-//! [`scoped` module]: scoped/index.html
-//!
-//! # Additional Types
-//! The types and modules exported by default represent the most ones used. However, the sub-crates
-//! in this crate also support more specialized needs.
-//!
-//! These are slightly less ergonomic out of necessity, however they are not too bad once you get
-//! used to them.
-//!
-//! ## Creating and Using Thread Pools
-//!
-//! In most cases, you can just use [`rayon::scope`] to get direct access to the rayon thread pool.
-//!
-//! In addition, **[`rayon::ThreadPool`]** can be used create a rayon thread pool with an
-//! _explicit_ number of threads. This can also create scoped threads. Note that the thread pool
-//! controls the number of threads executed for _all_ rayon functions, so while externally they are
-//! not ergonomic (you have to do quite a bit of work to set them up) any function internally will
-//! just "do what you expect" and use the threads you have initialized.
-//!
-//! [`rayon::ThreadPool`]: ../rayon/struct.ThreadPool.html
-
 #![feature(trace_macros)]
 
 #[allow(unused_imports)]
@@ -272,8 +248,8 @@ extern crate taken;
 #[allow(unused_imports)]
 #[macro_use(select_loop)]
 pub extern crate crossbeam_channel;
-pub extern crate rayon;
 pub extern crate std_prelude;
+pub extern crate num_cpus;
 
 // -------- std_prelude exports --------
 // Types
@@ -294,11 +270,7 @@ pub mod reexports {
 }
 pub use reexports::*;
 
-// -------- other exports --------
-pub use rayon::prelude::*;
-
 pub mod ch;
-pub mod scoped;
 
 use std_prelude::*;
 
