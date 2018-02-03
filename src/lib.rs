@@ -5,15 +5,36 @@
 //! because of `std::sync` and because it is _not_ async, which is/will be a separate part of the
 //! ergo ecocystem.
 //!
+//! This provides ergonomic access to threading/synchronization primitives and macros. It does
+//! _not_ provide an opinion on which threading primitives you use. See the following crates:
+//!
+//! - [`rayon`] for procesing data structures in parallel. Note that [rayon cannot be used for
+//!   generic iterators][ray_iter] (like `recv.iter()`).
+//! - [`may`] for stackful coroutines, similar to golang's goroutines.
+//! - [`crossbeam_utils`] for scoped threads.
+//!
+//! However, please note that in _most_ cases using [`spawn`] with channels and [`num_cpus`]
+//! is sufficient for performing _most_ tasks. Obviously if you are a server servicing 100+
+//! clients, or doing big data analysis, or have other specific requirements then you want more
+//! specialized concurrency primitives, which the above can provide separately from this crate.
+//!
+//! [`ergo`]: https://github.com/rust-crates/ergo
+//! [`rayon`]: https://github.com/rayon-rs/rayon
+//! [ray_iter]: https://github.com/rayon-rs/rayon/issues/46
+//! [`may`]: https://docs.rs/may
+//! [`crossbeam_utils`]: https://docs.rs/crossbeam-utils/
+//! [`num_cpus`]: ../num_cpus/index.html
+//!
+//! ### Thankyou
+//!
 //! The crates that are wraped/exported are:
 //!
 //! - [`crossbeam_channel`](https://github.com/crossbeam-rs/crossbeam-channel):
 //!   Multi-producer multi-consumer channels for message passing
-//! - [`taken`](https://github.com/vitiral/taken): macros for taking ownership
+//! - [`num_cpus`](https://github.com/seanmonstar/num_cpus): Get the number of CPUs in Rust
+//! - [`taken`](https://github.com/vitiral/taken): Macros for taking ownership
 //!
 //! Consider supporting their development individually and starring them on github.
-//!
-//! [`ergo`]: https://github.com/rust-crates/ergo
 //!
 //! # How to Use
 //!
@@ -25,16 +46,17 @@
 //! # fn main() {}
 //! ```
 //!
-//! It provides the following types and modules for most use cases.
+//! ## Types Functions and Modules
 //!
 //! - **[`ch` module]**: for channel types (also see the [`ch!`] and [`select_loop!`] macros).
-//! - **[`rayon` prelude]**: for parallizing iterators using a work-stealing threadpool. Use this
-//!   (`par_iter()` method) if you have to parallize a ton of things and you want it to just happen
-//!   as quickly as possible with as few threads as possible.
 //! - **[`spawn`]**: the standad `std::thread::spawn` which spawns a regular OS thread. The
 //!   advantage of this (over scoped threads) is that it can outlive the current function. The
 //!   disadvantage is that as far as the compiler knows it _always_ outlives the current function,
 //!   meaning it must own all of its variables (or they have to be `'static`).
+//! - **[`num_cpus`]**: for getting the number of cpus when creating your own thread pools.
+//! - **[`std_prelude`]**: Various concurrency related types from `std_prelude` including:
+//!   - `Atomic*`, `Mutex`, `Arc` for concurrency safe types
+//!   - `sleep` and (redefined non-deprecated) `sleep_ms`.
 //!
 //! In addition it provides the following helper macros:
 //!
@@ -53,12 +75,11 @@
 //!
 //! [`ch` module]: ch/index.html
 //! [`spawn`]: fn.spawn.html
-//! [`rayon` prelude]: ../rayon/index.html
-//! [`rayon::scope`]: file:///home/garrett/src/ruststuff/ergo_sync/target/doc/rayon/fn.scope.html
 //! [`take!`]: macro.take.html
 //! [`ch!`]: macro.ch.html
 //! [`ch_try!`]: macro.ch_try.html
 //! [`select_loop!`]: macro.select_loop.html
+//! [`std_prelude`]: ../std_prelude/index.html
 //!
 //! # Examples
 //!
@@ -72,39 +93,37 @@
 //!
 //! In the `ergo_sync` model you should:
 //!
-//! - Do "CPU work" using the rayon threadpool. This typically means using the rayon parallel
-//!   iterators, but you can also use `rayon::scope`
-//!
-//! - Do "IO work" using system threads. A typically good number is `min(8, num_cpus())` since
-//!   8 is a typicaly a high bar for the number of channels on an SSD or other storage device.
+//! - Do "CPU work" by spawning up to `num_cpus::get()` threads.
+//! - Do "IO work" using between 4 - 16 threads since most storage devices only provide up to that
+//!   many channels. I personally prefer to use 8.
 //!
 //! A typical application might look like this:
 //!
 //!
 //! ```no_compile
 //!  +-----------------------+
-//!  | Feed Paths to Parse   |
+//!  | Get paths to parse    |
 //!  | (typically one thread |
 //!  | using walkdir which   |
 //!  | is rediculously fast) |
+//!  | Send them via channel |
 //!  +-----------------------+
 //!         ___|___
 //!        /   |   \
 //!       v    v    v
 //!  +------------------------+
-//!  | 8 or more threads      |
-//!  | receiving paths via    |
-//!  | channels and reading   |
-//!  | raw strings.           |
+//!  | 4-16 threads receiving |
+//!  | paths via channels and |
+//!  | reading raw strings.   |
 //!  |                        |
-//!  | These are sent via     |
-//!  | channel the next stage |
+//!  | These are sent to next |
+//!  | stage via channels     |
 //!  +------------------------+
 //!         ___|___
 //!        /   |   \
 //!       v    v    v
 //!  +------------------------+
-//!  | A rayon par_iter       |
+//!  | num_cpu threads        |
 //!  | reading the string     |
 //!  | iterators and          |
 //!  | processing them.       |
@@ -115,15 +134,15 @@
 //!            |
 //!            v
 //!  +------------------------+
-//!  | Results are collected  |
-//!  | to prepare for next    |
-//!  | step                   |
+//!  | Collect results in the |
+//!  | current thread to      |
+//!  | prepare for next step  |
 //!  +------------------------+
 //! ```
 //!
 //! This example basically implements the above example using the source code
 //! of this crate as the example. The below code searches through the crate
-//! source looking for every use of the word "example".
+//! source looking for every use of the word _"example"_.
 //!
 //! > Note: it is recommended to use [`ergo_fs`] to do filesystem operations, as all errors will
 //! > have the _context_ (path and action) of what caused the error and you will have access to
@@ -177,60 +196,61 @@
 //! }
 //!
 //! fn main() {
-//!     let (send_errs, recv_errs) = ch::bounded(128);
-//!     let (send_paths, recv_paths) = ch::bounded(128);
+//!     let (recv_count, handle_errs) = {
+//!         // This scope will drop channels that we are not returning.
+//!         // This prevents deadlock, as recv channels will not stop
+//!         // blocking until all their send counterparts are dropped.
+//!         let (send_errs, recv_errs) = ch::bounded(128);
+//!         let (send_paths, recv_paths) = ch::bounded(128);
 //!
-//!     // First we spawn a single thread to handle errors.
-//!     // In this case we will just count and log them.
-//!     let handle_errs = spawn(|| {
-//!         take!(recv_errs);
-//!         let mut count = 0_u64;
-//!         for err in recv_errs.iter() {
-//!             eprintln!("ERROR: {}", err);
-//!             count += 1;
-//!         }
-//!         count
-//!     });
+//!         // First we spawn a single thread to handle errors.
+//!         // In this case we will just count and log them.
+//!         let handle_errs = spawn(|| {
+//!             take!(recv_errs);
+//!             let mut count = 0_u64;
+//!             for err in recv_errs.iter() {
+//!                 eprintln!("ERROR: {}", err);
+//!                 count += 1;
+//!             }
+//!             count
+//!         });
 //!
-//!     // We spawn a single thread to "walk" the directory for paths.
-//!     let errs = send_errs.clone();
-//!     spawn(|| {
-//!         take!(send_paths, errs);
-//!         read_paths("src", &send_paths, &errs);
-//!     });
-//!
-//!     // We read the lines using 8 threads (since this is IO bound)
-//!     let (send_lines, recv_lines) = ch::bounded(128);
-//!     for _ in 0..8 {
-//!         take!(=recv_paths, =send_lines, =send_errs);
+//!         // We spawn a single thread to "walk" the directory for paths.
+//!         let errs = send_errs.clone();
 //!         spawn(|| {
-//!             take!(recv_paths, send_lines, send_errs);
-//!             for path in recv_paths {
-//!                 read_lines(path, &send_lines, &send_errs);
-//!             }
+//!             take!(send_paths, errs);
+//!             read_paths("src", &send_paths, &errs);
 //!         });
-//!     }
-//!     // It's always good to drop your sender when you don't need
-//!     // it to prevent deadlock.
-//!     drop(send_lines);
 //!
-//!     // Now we do actual "CPU work" using the rayon thread pool
-//!     let (send_count, recv_count) = ch::bounded(128);
-//!
-//!     // Create a pool of threads for actually doing the "work"
-//!     for _ in 0..num_cpus::get() {
-//!         take!(=recv_lines, =send_count);
-//!         spawn(move || {
-//!             for line in recv_lines.iter() {
-//!                 let count = count_examples(&line);
-//!                 if count != 0 {
-//!                     ch!(send_count <- count);
+//!         // We read the lines using 8 threads (since this is IO bound)
+//!         let (send_lines, recv_lines) = ch::bounded(128);
+//!         for _ in 0..8 {
+//!             take!(=recv_paths, =send_lines, =send_errs);
+//!             spawn(|| {
+//!                 take!(recv_paths, send_lines, send_errs);
+//!                 for path in recv_paths {
+//!                     read_lines(path, &send_lines, &send_errs);
 //!                 }
-//!             }
-//!         });
-//!     }
-//!     drop(send_count);
-//!     drop(send_errs);
+//!             });
+//!         }
+//!
+//!         // Now we do actual "CPU work" using the rayon thread pool
+//!         let (send_count, recv_count) = ch::bounded(128);
+//!
+//!         // Create a pool of threads for actually doing the "work"
+//!         for _ in 0..num_cpus::get() {
+//!             take!(=recv_lines, =send_count);
+//!             spawn(move || {
+//!                 for line in recv_lines.iter() {
+//!                     let count = count_examples(&line);
+//!                     if count != 0 {
+//!                         ch!(send_count <- count);
+//!                     }
+//!                 }
+//!             });
+//!         }
+//!         (recv_count, handle_errs)
+//!     };
 //!
 //!     // Finally we can get our count.
 //!     let count: u64 = recv_count.iter().sum();
