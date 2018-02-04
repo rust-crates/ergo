@@ -1,12 +1,20 @@
 [package]
-authors = ["Garrett Berg <googberg@gmail.com>"]
+authors = ["Garrett Berg <vitiral@gmail.com>"]
+description = "Make loading configuration more ergonomic, therefore fun!"
+documentation = "https://docs.rs/ergo_config"
+keywords = [
+    "ergo",
+    "configuration",
+]
+license = "MIT OR Apache-2.0"
 name = "ergo_config"
-version = "0.1.0"
+readme = "README.md"
+repository = "https://github.com/rust-crates/ergo_config"
+version = "0.0.1"
 
 [dependencies]
 configure = "0.1.1"
-serde = "1.0.27"
-serde_derive = "1.0.27"
+ron = "0.1.7"
 serde_json = "1.0.9"
 serde_yaml = "0.7.3"
 toml = "0.4.5"
