@@ -1,8 +1,18 @@
 [package]
-authors = ["Garrett Berg <googberg@gmail.com>"]
+authors = ["Garrett Berg <vitiral@gmail.com>"]
+description = "Make accessing system resources more ergonomic, therefore more fun!"
+documentation = "https://docs.rs/ergo_sys"
+keywords = [
+    "ergo",
+    "system",
+    "os",
+]
+license = "MIT OR Apache-2.0"
 name = "ergo_sys"
-version = "0.1.0"
+readme = "README.md"
+repository = "https://github.com/rust-crates/ergo_sys"
+version = "0.0.1"
 
 [dependencies]
-chan-signal = "0.3.1"
+ctrlc = "3.1.0"
 rand = "0.4.2"
