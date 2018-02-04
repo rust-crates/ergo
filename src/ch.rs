@@ -289,8 +289,8 @@ macro_rules! ch {
     [$send:ident <-? $value:expr] => {
         match $send.try_send($value) {
             Ok(()) => None,
-            Err(ch::TrySendError::Full(v)) => Some(v),
-            Err(ch::TrySendError::Disconnected(_)) => {
+            Err($crate::ch::TrySendError::Full(v)) => Some(v),
+            Err($crate::ch::TrySendError::Disconnected(_)) => {
                 panic!("Attempted to send a value but receivers are disconnected");
             }
         }
@@ -306,8 +306,8 @@ macro_rules! ch {
     [<-? $recv:ident] => {
         match $recv.try_recv() {
             Ok(v) => Some(v),
-            Err(ch::TryRecvError::Empty) => None,
-            Err(ch::TryRecvError::Disconnected) => {
+            Err($crate::ch::TryRecvError::Empty) => None,
+            Err($crate::ch::TryRecvError::Disconnected) => {
                 panic!("Attempted to recv a value but senders are disconnected");
             }
         }
@@ -323,8 +323,8 @@ macro_rules! ch {
     [! <-? $recv:ident] => {
         match $recv.try_recv() {
             Ok(v) => panic!("Got {:?} when expecting senders to be closed.", v),
-            Err(ch::TryRecvError::Empty) => true,  // senders still exist
-            Err(ch::TryRecvError::Disconnected) => false, // no more senders
+            Err($crate::ch::TryRecvError::Empty) => true,  // senders still exist
+            Err($crate::ch::TryRecvError::Disconnected) => false, // no more senders
         }
     };
     [! <- $recv:ident] => {
