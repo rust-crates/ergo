@@ -328,7 +328,7 @@ impl<T: Send + 'static> FinishHandle<T> for ::std::thread::JoinHandle<T> {
 ///
 /// Equivalent of `sleep(Duration::from_millis(millis))`
 ///
-/// This function exists in `std::thread`, so it created here instead.
+/// This function exists in `std::thread` but is deprecated, so it created here instead.
 ///
 /// # Examples
 /// ```rust
