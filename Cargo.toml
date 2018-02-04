@@ -1,6 +1,15 @@
 [package]
-authors = ["Garrett Berg <googberg@gmail.com>"]
-name = "ergo_prelude"
+authors = ["Garrett Berg <vitiral@gmail.com>"]
+description = "items that could be in the standard library, part of the ergo ecosystem"
+documentation = "https://docs.rs/ergo_std"
+keywords = [
+    "ergo",
+    "std",
+]
+license = "MIT OR Apache-2.0"
+name = "ergo_std"
+readme = "README.md"
+repository = "https://github.com/rust-crates/ergo_std"
 version = "0.1.0"
 
 [dependencies]
