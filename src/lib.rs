@@ -6,27 +6,36 @@
 //!
 //! # How to Use
 //!
-//! ```rust
-//! #[macro_use] extern crate failure;
-//! extern crate serde;
-//! #[macro_use] extern crate serde_derive;
-//! #[macro_use] extern crate ergo_std;
-//! use ergo_std::*;
-//! # fn main() {
-//! # }
+//! In your `Cargo.toml`
+//!
+//! ```toml,no_compile
+//! [dependencies]
+//! ergo_std = "0.1"
+//! serde = "1.0"
+//! serde_derive = "1.0"
 //! ```
 //!
-//! > _As you notice, this crate does not include `serde` or `failure`. This is due to a bug
-//! > which makes it impossible for this crate to rexport their `#[derive(...)]` macros.
+//! > You have to put the other crates in your `Cargo.toml` in order for `#[derive(...)]` to work
+//! > correctly.
+//!
+//! ```rust
+//! #[macro_use] extern crate ergo_std;
+//! use ergo_std::*;
+//! fn main() {
+//!     /* Your code goes here */
+//! }
+//! ```
 //!
 //! # Exported Items
 //!
 //! The following crates and types are exported. See their docs for how to use them.
 //!
-//! - **[`std_prelude`]**: extends rust's additional prelude with commonly used types. The
+//! - **[`std_prelude`]**: extends rust's `std::prelude` with commonly used types. The
 //!   crate is well documented with justification and usecases for each type.
+//! - **[`serde`]**: the defacto serialization library of rust. Also imports `serde_derive`
+//!   so you can use `#[derive(Serialize, Deserialize)]`.
 //! - **[`lazy_static!`]**: the `lazy_static!` macro is the current standard way to create
-//!   global variables and constants in a majority of crates.
+//!   global variables and constants. Warning that they are created lazily (at run time)!
 //! - **[`itertools`]**: the itertools prelude provides traits that extends rust's already
 //!   extensive iterator API.
 //! - **[`maplit`]**: provides `hashmap!`, `hashset!`, `btreemap!` and `btreeset!` macros to
@@ -44,22 +53,21 @@
 //!
 //! The crates that are exported are:
 //!
-//! - [**std_prelude**](https://github.com/vitiral/std_prelude):
-//!   Multi-producer multi-consumer channels for message passing
-//! - [**lazy_static**](TODO): TODO
-//! - [**itertools**](TODO): TODO
-//! - [**maplit**](TODO): TODO
-//! - [**regex**](TODO): TODO
+//! - [**serde**](https://github.com/serde-rs/serde): Serialization framework for Rust
+//! - [**std_prelude**](https://github.com/vitiral/std_prelude): prelude that the rust stdlib
+//!   should have always had
+//! - [**lazy_static**](https://github.com/rust-lang-nursery/lazy-static.rs): A small macro for
+//!   defining lazy evaluated static variables in Rust.
+//! - [**itertools**](https://github.com/bluss/rust-itertools): Extra iterator adaptors, iterator
+//!   methods, free functions, and macros.
+//! - [**maplit**](https://github.com/bluss/maplit): Rust container / collection literal macros for
+//!   HashMap, HashSet, BTreeMap, BTreeSet.
+//! - [**regex**](https://github.com/rust-lang/regex): An implementation of regular expressions for
+//!   Rust. This implementation uses finite automata and guarantees linear time matching on all
+//!   inputs.
 //!
 //! Consider supporting their development individually and starring them on github.
-//!
-//! ## Future crates
-//!
-//! The following crates will be added in the future:
-//!
-//! - `indexmap`: the current crate is `ordermap`, which is renaming itself
-//!   `indexmap` and changing what `ordermap` is... it's confusing but it
-//!   will be comming shortly
+#![allow(unused_imports)]
 
 #[macro_use]
 pub extern crate itertools;
@@ -69,11 +77,15 @@ pub extern crate lazy_static;
 pub extern crate maplit;
 pub extern crate std_prelude;
 pub extern crate regex;
+pub extern crate serde;
+#[macro_use]
+pub extern crate serde_derive;
 
 pub use std_prelude::*;
-pub use itertools::prelude::*;
 pub use lazy_static::*;
 pub use itertools::Itertools;
 pub use maplit::*;
 pub use regex::Regex;
+pub use serde::*;
+pub use serde_derive::*;
 
