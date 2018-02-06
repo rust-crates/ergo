@@ -52,7 +52,7 @@ The `ergo` crate itself is not currently usable.
   operations. (*beta status*)
 - [x] [**ergo_sync**](https://github.com/rust-crates/ergo_sync): provides an
   ultra-simple API for using `Sync` types, i.e.  running threads and sending
-  messages. (*beta statu*)
+  messages. (*beta status*)
 
 ### Near Term Sub Crates
 The following sub crates are targeted towards the following months:
@@ -61,7 +61,7 @@ The following sub crates are targeted towards the following months:
   `maplit`, `itertools`, `ordermap`. This will be _very few
   crates_. It is mostly composed of things which could practically be in the
   std library.
-- [ ] **ergo_config** deserialization and config files and ENV variables:
+- [ ] **ergo_config**: deserialization and config files and ENV variables:
   `toml`, `serde_json`, `serde_yaml`, `configure`
 - [ ] **ergo_sys**: deal with interfacing with the OS. Examples currently only
   include signal handling (`chan-signal`) and randomness (`rand`) but we are
