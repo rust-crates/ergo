@@ -8,9 +8,9 @@
 
 ## Future Items
 
-- [ ]: Clean up TODOs, mostly around error messages in external crates.
-- [ ]: Have an API review done by the rust community.
-- [ ]: Support `ramfs` as `PathRam`, see [this issue][ramfs]
+- [ ] Clean up TODOs, mostly around error messages in external crates.
+- [ ] Have an API review done by the rust community.
+- [ ] Support `ramfs` as `PathRam`, see [this issue][ramfs]
 
 [ramfs]: https://github.com/rust-lang-nursery/tempdir/issues/42
 
