@@ -15,7 +15,7 @@ as have tested documentation to ensure they interopate together reliably.
 > > For the ergonomics of hacking, it has one of the best argument parsers
 > > ever, has seriously the best serialization library ever and it compiles to
 > > almost any target and goes fast when it runs. (@vitiral)
-
+>
 > Rust has also seem some production update in the CLI space, for which it is
 > very well-suited. This is a space where Rust’s portability, reliability, and
 > ability to produce static binaries make it extremely attractive. We also have a
@@ -45,39 +45,43 @@ Ergo aims to provide the following benefits:
 # Sub Crates
 The ergo ecosystem is split into multiple crates, each with the prefix `ergo_`
 
-The `ergo` crate itself is not currently usable.
+The `ergo` crate itself is _currently in alpha status_. The primary author is
+rewriting his CLI application using it to get the rough edges ironed out and
+we are looking for feedback, contributors and leaders from the community
+during this time
 
-### Implemented Sub Crates
+For now, consuder using [quicli](https://github.com/killercup/quicli) which
+will [integrate cleanly with the ergo
+ecosystem](https://github.com/killercup/quicli/issues/43) in the future.
+If you _do_ use this crate expect frequenty changes that are not semver
+compliant.
+
+
+## Implemented Sub Crates
 - [x] [**ergo_fs**](https://github.com/vitiral/ergo_fs): ergonomic filesystem
-  operations. (*beta status*)
+  operations. (_beta status_)
 - [x] [**ergo_sync**](https://github.com/rust-crates/ergo_sync): provides an
-  ultra-simple API for using `Sync` types, i.e.  running threads and sending
-  messages. (*beta status*)
+  ultra-simple API for using `Sync` types, i.e. running threads and sending
+  messages. (_beta status_)
+- [x] [**ergo_std**](https://github.com/rust-crates/ergo_std): "generally
+  needed stuff" -- `regex`, `lazy_static`, `maplit`, `itertools`, `ordermap`.
+  This will be _very few crates_. It is mostly composed of things which could
+  practically be in the std library. (_beta status_)
+- [x] [**ergo_config**](https://github.com/rust-crates/ergo_config):
+  deserialization and config files and ENV variables: `ron`, `toml`,
+  `serde_json`, `serde_yaml`, `configure` (_alpha status_)
+- [x] [**ergo_sys**](https://github.com/rust-crates/ergo_sys): deal with
+  interfacing with the OS. Examples currently only include signal handling
+  (`ctrlc`) and randomness (`rand`) but we are looking for other important
+  crates. (_alpha status_)
 
-### Near Term Sub Crates
-The following sub crates are targeted towards the following months:
 
-- [ ] **ergo_std**: "generally needed stuff" -- `regex`, `lazy_static`,
-  `maplit`, `itertools`, `ordermap`. This will be _very few
-  crates_. It is mostly composed of things which could practically be in the
-  std library.
-- [ ] **ergo_config**: deserialization and config files and ENV variables:
-  `toml`, `serde_json`, `serde_yaml`, `configure`
-- [ ] **ergo_sys**: deal with interfacing with the OS. Examples currently only
-  include signal handling (`chan-signal`) and randomness (`rand`) but we are
-  looking for other important crates.
-
-### Future Sub Crates
+## Future Sub Crates
 - [ ] **ergo_client**: methods/types to be an HTTP client. Sub crates probably
   include `reqwest`, `h2` and some kinds of json-rpc+soap protocol helpers.
 - [ ] **ergo_term**: simple and ergonomic terminal rendering.
 - [ ] **ergo_test**: one-stop-shop for core testing functionality, mocking,
   etc.
-- [ ] **ergo_cli**: we want to use
-  [quicli](https://github.com/killercup/quicli), either copy much of its API or
-  integrate it directly. The goals don't
-  [100% align](https://github.com/killercup/quicli/issues/19) but we would
-  like some kind of interop/sharing.
 
 
 # LICENSE
