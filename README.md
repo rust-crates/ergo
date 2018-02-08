@@ -1,5 +1,10 @@
 # Ergo: making rust's ecosystem more ergonomic, therefore more fun.
 
+[![Build Status](https://travis-ci.org/rust-crates/ergo.svg?branch=master)](https://travis-ci.org/rust-crates/ergo)
+[![Build status](https://ci.appveyor.com/api/projects/status/vgis54solhygre0n?svg=true)](https://ci.appveyor.com/project/rust-crates/path-abs)
+[![Docs](https://docs.rs/ergo/badge.svg)](https://docs.rs/ergo)
+
+
 _The Ergo Ecosystem_ is an effort to unify the rust ecosystem at critical
 sections. It is currently focused on improving Command Line Interface (CLI)
 ergonomics. To accomplish this it will create _multiple targeted
