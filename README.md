@@ -1,7 +1,7 @@
 # ergo_std: items that could be in the standard library.
 
-[![Build Status](https://travis-ci.org/vitiral/ergo_std.svg?branch=windows)](https://travis-ci.org/vitiral/ergo_std)
-[![Build status](https://ci.appveyor.com/api/projects/status/vgis54solhygre0n?svg=true)](https://ci.appveyor.com/project/vitiral/path-abs)
+[![Build Status](https://travis-ci.org/rust-crates/ergo_std.svg?branch=master)](https://travis-ci.org/rust-crates/ergo_std)
+[![Build status](https://ci.appveyor.com/api/projects/status/vgis54solhygre0n?svg=true)](https://ci.appveyor.com/project/rust-crates/path-abs)
 [![Docs](https://docs.rs/ergo_std/badge.svg)](https://docs.rs/ergo_std)
 
 **See the [library docs](https://docs.rs/ergo_std) for more information**
