@@ -56,7 +56,6 @@
 //! - [**serde**](https://github.com/serde-rs/serde): Serialization framework for Rust
 //! - [**std_prelude**](https://github.com/vitiral/std_prelude): prelude that the rust stdlib
 //!   should have always had
-//! - [**expect_macro**](https://github.com/vitiral/expect_macro): The `expect!` macro
 //! - [**lazy_static**](https://github.com/rust-lang-nursery/lazy-static.rs): A small macro for
 //!   defining lazy evaluated static variables in Rust.
 //! - [**itertools**](https://github.com/bluss/rust-itertools): Extra iterator adaptors, iterator
@@ -71,8 +70,6 @@
 #![allow(unused_imports)]
 
 #[macro_use]
-pub extern crate expect_macro;
-#[macro_use]
 pub extern crate itertools;
 #[macro_use]
 pub extern crate lazy_static;
@@ -84,7 +81,6 @@ pub extern crate serde;
 #[macro_use]
 pub extern crate serde_derive;
 
-pub use expect_macro::*;
 pub use std_prelude::*;
 pub use lazy_static::*;
 pub use itertools::Itertools;
