@@ -13,6 +13,7 @@ repository = "https://github.com/rust-crates/ergo_std"
 version = "0.0.1"
 
 [dependencies]
+expect_macro = "0.1.0"
 itertools = "0.7"
 lazy_static = "1.0"
 maplit = "1.0"
