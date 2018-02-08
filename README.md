@@ -1,7 +1,7 @@
 # ergo_sys: make accessing system resources more ergonomic, therefore more fun!
 
-[![Build Status](https://travis-ci.org/vitiral/ergo_sys.svg?branch=windows)](https://travis-ci.org/vitiral/ergo_sys)
-[![Build status](https://ci.appveyor.com/api/projects/status/vgis54solhygre0n?svg=true)](https://ci.appveyor.com/project/vitiral/path-abs)
+[![Build Status](https://travis-ci.org/rust-crates/ergo_sys.svg?branch=master)](https://travis-ci.org/rust-crates/ergo_sys)
+[![Build status](https://ci.appveyor.com/api/projects/status/vgis54solhygre0n?svg=true)](https://ci.appveyor.com/project/rust-crates/path-abs)
 [![Docs](https://docs.rs/ergo_sys/badge.svg)](https://docs.rs/ergo_sys)
 
 **See the [library docs](https://docs.rs/ergo_sys) for more information**
