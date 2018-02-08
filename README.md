@@ -1,7 +1,7 @@
 # ergo_config: loading configuration more ergonomic, therefore fun!
 
-[![Build Status](https://travis-ci.org/vitiral/ergo_config.svg?branch=windows)](https://travis-ci.org/vitiral/ergo_config)
-[![Build status](https://ci.appveyor.com/api/projects/status/vgis54solhygre0n?svg=true)](https://ci.appveyor.com/project/vitiral/path-abs)
+[![Build Status](https://travis-ci.org/rust-crates/ergo_config.svg?branch=master)](https://travis-ci.org/rust-crates/ergo_config)
+[![Build status](https://ci.appveyor.com/api/projects/status/vgis54solhygre0n?svg=true)](https://ci.appveyor.com/project/rust-crates/path-abs)
 [![Docs](https://docs.rs/ergo_config/badge.svg)](https://docs.rs/ergo_config)
 
 **See the [library docs](https://docs.rs/ergo_config) for more information**
