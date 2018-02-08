@@ -1,7 +1,7 @@
 # Methods and types for making working with the filesystem ergonomic, therefore fun.
 
-[![Build Status](https://travis-ci.org/vitiral/ergo_fs.svg?branch=windows)](https://travis-ci.org/vitiral/ergo_fs)
-[![Build status](https://ci.appveyor.com/api/projects/status/vgis54solhygre0n?svg=true)](https://ci.appveyor.com/project/vitiral/path-abs)
+[![Build Status](https://travis-ci.org/rust-crates/ergo_fs.svg?branch=master)](https://travis-ci.org/rust-crates/ergo_fs)
+[![Build status](https://ci.appveyor.com/api/projects/status/vgis54solhygre0n?svg=true)](https://ci.appveyor.com/project/rust-crates/path-abs)
 [![Docs](https://docs.rs/ergo_fs/badge.svg)](https://docs.rs/ergo_fs)
 
 **See the [library docs](https://docs.rs/ergo_fs) for more information**
