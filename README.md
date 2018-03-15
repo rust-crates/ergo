@@ -31,9 +31,9 @@ as have tested documentation to ensure they interopate together reliably.
 
 
 # Vision
-Ergo's current goal is to be a full featuerd CLI SDK, built from composable
+Ergo's current goal is to be a full featured CLI SDK, built from composable
 and distinct sub components. You should be able to depend on the `ergo` library
-itself or each of its sub components individally.
+itself or each of its sub components individually.
 
 Ergo aims to provide the following benefits:
 - A standardized API for disparate types/approaches, allowing library authors
