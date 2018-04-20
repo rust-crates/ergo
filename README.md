@@ -1,7 +1,7 @@
 # Ergo: making rust's ecosystem more ergonomic, therefore more fun.
 
 [![Build Status](https://travis-ci.org/rust-crates/ergo.svg?branch=master)](https://travis-ci.org/rust-crates/ergo)
-[![Build status](https://ci.appveyor.com/api/projects/status/vgis54solhygre0n?svg=true)](https://ci.appveyor.com/project/rust-crates/path-abs)
+[![Build status](https://ci.appveyor.com/api/projects/status/iet58b7gj9jh19mt?svg=true)](https://ci.appveyor.com/project/vitiral/ergo-5l7h9)
 [![Docs](https://docs.rs/ergo/badge.svg)](https://docs.rs/ergo)
 
 
