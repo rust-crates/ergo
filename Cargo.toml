@@ -10,7 +10,7 @@ license = "MIT OR Apache-2.0"
 name = "ergo_std"
 readme = "README.md"
 repository = "https://github.com/rust-crates/ergo_std"
-version = "0.0.1"
+version = "0.0.2"
 
 [dependencies]
 itertools = "0.7"
@@ -20,3 +20,4 @@ regex = "0.2.5"
 serde = "1.0"
 serde_derive = "1.0"
 std_prelude = "0.2"
+indexmap = "1.0.1"
