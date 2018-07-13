@@ -7,7 +7,7 @@ license = "MIT OR Apache-2.0"
 name = "ergo"
 readme = "README.md"
 repository = "https://github.com/rust-crates/ergo"
-version = "0.0.4"
+version = "0.0.5"
 
 [dependencies]
 ergo_config = "0.0.1"

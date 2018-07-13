@@ -29,3 +29,6 @@ pub use ergo_fs::*;
 pub use ergo_std::*;
 pub use ergo_sync::*;
 pub use ergo_sys::*;
+
+mod deep_copy;
+pub use deep_copy::deep_copy;
