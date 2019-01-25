@@ -1,0 +1,25 @@
+[package]
+authors = ["Garrett Berg <vitiral@gmail.com>"]
+description = "Types for making working with the filesystem ergonomic, therefore fun."
+documentation = "https://docs.rs/ergo_fs"
+keywords = [
+    "filesystem",
+    "path",
+    "file",
+    "types",
+    "ergonomic",
+]
+license = "MIT OR Apache-2.0"
+name = "ergo_fs"
+readme = "README.md"
+repository = "https://github.com/rust-crates/ergo_fs"
+version = "0.2.0"
+
+[dependencies]
+glob = "0.2.11"
+path_abs = "^0.4.0"
+shellexpand = "1.0.0"
+std_prelude = "^0.2.9"
+tar = "^0.4.14"
+tempdir = "^0.3.5"
+walkdir = "^2.0.1"
