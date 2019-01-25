@@ -7,11 +7,11 @@ license = "MIT OR Apache-2.0"
 name = "ergo"
 readme = "README.md"
 repository = "https://github.com/rust-crates/ergo"
-version = "0.0.5"
+version = "0.0.6"
 
 [dependencies]
 ergo_config = {path="../ergo_config", version="0.0.1"}
-ergo_fs = {path="../ergo_fs", version="^0.2.0"}
-ergo_std = {path="../ergo_std", version="0.0.3"}
+ergo_fs = {path="../ergo_fs", version="0.2.0"}
+ergo_std = {path="../ergo_std", version="0.0.4"}
 ergo_sync = {path="../ergo_sync", version="0.1.0"}
 ergo_sys = {path="../ergo_sys", version="0.0.1"}
