@@ -1,0 +1,10 @@
+[workspace]
+
+members = [
+    "ergo",
+    "ergo_config",
+    "ergo_fs",
+    "ergo_std",
+    "ergo_sync",
+    "ergo_sys",
+]
