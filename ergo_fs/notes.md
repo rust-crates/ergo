@@ -1,0 +1,1 @@
+- Open a ticket to WalkDir to pretify their `From<Error> for io::Error` implementation.

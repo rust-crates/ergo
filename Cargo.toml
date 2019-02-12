@@ -1,17 +1,10 @@
-[package]
-authors = ["Garrett Berg <vitiral@gmail.com>"]
-description = "<alpha> making rust's ecosystem more ergonomic, therefore more fun."
-documentation = "https://docs.rs/ergo"
-keywords = ["ergonomics", "cli", "application"]
-license = "MIT OR Apache-2.0"
-name = "ergo"
-readme = "README.md"
-repository = "https://github.com/rust-crates/ergo"
-version = "0.0.5"
+[workspace]
 
-[dependencies]
-ergo_config = "0.0.1"
-ergo_fs = "^0.2.0"
-ergo_std = "0.0.3"
-ergo_sync = "0.1.0"
-ergo_sys = "0.0.1"
+members = [
+    "ergo",
+    "ergo_config",
+    "ergo_fs",
+    "ergo_std",
+    "ergo_sync",
+    "ergo_sys",
+]
