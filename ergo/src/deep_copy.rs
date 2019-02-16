@@ -94,7 +94,8 @@ fn walk_and_create_dirs(
 }
 
 fn create_dir_maybe<P: AsRef<Path>>(path: P) -> path_abs::Result<PathDir> {
-    let arc = PathArc::new(path);
-    fs::create_dir(&arc).map_err(|err| path_abs::Error::new(err, "creating dir", arc.clone()))?;
-    PathDir::new(arc)
+    let path = path.as_ref();
+    fs::create_dir(path)
+        .map_err(|err| path_abs::Error::new(err, "creating dir", PathBuf::from(path).into()))?;
+    PathDir::new(path)
 }

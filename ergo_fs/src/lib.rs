@@ -163,7 +163,7 @@ pub extern crate walkdir;
 
 use std::borrow::Cow; // FIXME: remove this
 use std_prelude::*;
-pub use path_abs::{FileEdit, FileRead, FileWrite, PathAbs, PathArc, PathDir, PathFile, PathType};
+pub use path_abs::{FileEdit, FileRead, FileWrite, PathAbs, PathDir, PathFile, PathType, PathInfo, PathOps, PathMut};
 pub use walkdir::{Error as WalkError, WalkDir};
 pub use std_prelude::{Read, IoWrite, Path, PathBuf};
 
@@ -221,12 +221,12 @@ pub trait PathTypeExt {
         let abs = PathAbs::new(entry.path())?;
         let ty = entry.file_type();
         if ty.is_file() {
-            Ok(PathType::File(PathFile::from_abs_unchecked(abs)))
+            Ok(PathType::File(PathFile::new_unchecked(abs)))
         } else if ty.is_dir() {
-            Ok(PathType::Dir(PathDir::from_abs_unchecked(abs)))
+            Ok(PathType::Dir(PathDir::new_unchecked(abs)))
         } else {
             // it is a symlink and we _must_ use a syscall to resolve the type.
-            PathType::from_abs(abs)
+            PathType::try_from(abs)
         }
     }
 }

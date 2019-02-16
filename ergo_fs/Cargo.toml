@@ -17,7 +17,7 @@ version = "0.2.0"
 
 [dependencies]
 glob = "0.2.11"
-path_abs = "^0.4.0"
+path_abs = {git="https://github.com/vitiral/path_abs"}
 shellexpand = "1.0.0"
 std_prelude = "^0.2.9"
 tar = "^0.4.14"
