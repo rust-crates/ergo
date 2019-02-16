@@ -20,4 +20,4 @@ regex = "0.2.5"
 serde = "1.0"
 serde_derive = "1.0"
 std_prelude = "0.2"
-indexmap = "1.0.1"
+indexmap = {version="1.0.1", features=["serde-1"]}
