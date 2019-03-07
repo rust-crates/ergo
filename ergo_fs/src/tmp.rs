@@ -16,7 +16,7 @@ use std::fmt;
 
 use std_prelude::*;
 use tempdir;
-use path_abs::{Error, PathAbs, PathArc, PathDir, Result};
+use path_abs::{Error, PathAbs, PathDir, Result};
 
 /// A `PathDir` that is automatically deleted when it goes out of scope.
 ///
@@ -75,7 +75,7 @@ impl PathTmp {
     ///
     /// # Examples
     /// ```
-    /// use ergo_fs::{PathFile, PathTmp};
+    /// use ergo_fs::{PathFile, PathTmp, PathInfo, PathOps};
     ///
     /// let tmp_dir = PathTmp::create("example").unwrap();
     /// let file = PathFile::create(tmp_dir.join("temporary-note.txt")).unwrap();
@@ -103,7 +103,7 @@ impl PathTmp {
     /// # Examples
     ///
     /// ```
-    /// use ergo_fs::{PathFile, PathTmp};
+    /// use ergo_fs::{PathFile, PathTmp, PathInfo, PathOps};
     ///
     /// let tmp_dir = PathTmp::create_in(".", "example").unwrap();
     /// let file = PathFile::create(tmp_dir.join("temporary-note.txt")).unwrap();
@@ -118,7 +118,7 @@ impl PathTmp {
     /// ```
     pub fn create_in<P: AsRef<Path>>(base: P, prefix: &str) -> Result<PathTmp> {
         let tmp = tempdir::TempDir::new_in(&base, prefix)
-            .map_err(|err| Error::new(err, "creating tmpdir", PathArc::new(&base)))?;
+            .map_err(|err| Error::new(err, "creating tmpdir", PathBuf::from(base.as_ref()).into()))?;
 
         Ok(PathTmp {
             dir: PathDir::new(tmp.path())?,
@@ -134,7 +134,7 @@ impl PathTmp {
     /// # Examples
     ///
     /// ```
-    /// use ergo_fs::PathTmp;
+    /// use ergo_fs::{PathTmp, PathInfo};
     ///
     /// let tmp_dir = PathTmp::create_in(".", "persist").unwrap();
     /// let dir = tmp_dir.persist();
@@ -217,20 +217,13 @@ impl Deref for PathTmp {
     type Target = PathAbs;
 
     fn deref(&self) -> &PathAbs {
-        &self.dir
+        self.dir.as_ref()
     }
 }
 
 impl Into<PathAbs> for PathTmp {
     /// Downgrades the `PathTmp` into a `PathAbs`
     fn into(self) -> PathAbs {
-        self.dir.into()
-    }
-}
-
-impl Into<PathArc> for PathTmp {
-    /// Downgrades the `PathTmp` into a `PathArc`
-    fn into(self) -> PathArc {
         self.dir.into()
     }
 }
