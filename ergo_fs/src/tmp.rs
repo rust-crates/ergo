@@ -75,7 +75,7 @@ impl PathTmp {
     ///
     /// # Examples
     /// ```
-    /// use ergo_fs::{PathFile, PathTmp, PathInfo};
+    /// use ergo_fs::{PathFile, PathTmp, PathInfo, PathOps};
     ///
     /// let tmp_dir = PathTmp::create("example").unwrap();
     /// let file = PathFile::create(tmp_dir.join("temporary-note.txt")).unwrap();
@@ -103,7 +103,7 @@ impl PathTmp {
     /// # Examples
     ///
     /// ```
-    /// use ergo_fs::{PathFile, PathTmp, PathInfo};
+    /// use ergo_fs::{PathFile, PathTmp, PathInfo, PathOps};
     ///
     /// let tmp_dir = PathTmp::create_in(".", "example").unwrap();
     /// let file = PathFile::create(tmp_dir.join("temporary-note.txt")).unwrap();

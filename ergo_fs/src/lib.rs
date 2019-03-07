@@ -163,7 +163,7 @@ pub extern crate walkdir;
 
 use std::borrow::Cow; // FIXME: remove this
 use std_prelude::*;
-pub use path_abs::{FileEdit, FileRead, FileWrite, PathAbs, PathDir, PathFile, PathType, PathInfo, PathOps, PathMut};
+pub use path_abs::{FileEdit, FileRead, FileWrite, PathAbs, PathDir, PathFile, PathType, PathInfo, PathOps, PathMut, PathSer};
 pub use walkdir::{Error as WalkError, WalkDir};
 pub use std_prelude::{Read, IoWrite, Path, PathBuf};
 
